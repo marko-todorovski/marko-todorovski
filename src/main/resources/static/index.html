@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Diagram Generator</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .app { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+        h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+        .subtitle { color: #94a3b8; margin-bottom: 2rem; font-size: 0.95rem; }
+        .form { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; }
+        .row { display: flex; gap: 1rem; align-items: flex-end; }
+        label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.35rem; }
+        textarea { width: 100%; height: 120px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; padding: 0.75rem; font-size: 0.9rem; resize: vertical; font-family: inherit; }
+        textarea:focus { outline: none; border-color: #3b82f6; }
+        select { background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; padding: 0.6rem 0.75rem; font-size: 0.9rem; min-width: 180px; cursor: pointer; }
+        select:focus { outline: none; border-color: #3b82f6; }
+        button { background: #3b82f6; color: #fff; border: none; border-radius: 8px; padding: 0.6rem 1.5rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+        button:hover:not(:disabled) { background: #2563eb; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .result { background: #1e293b; border-radius: 12px; padding: 1.5rem; }
+        .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .result-header h2 { font-size: 1rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+        .badge { background: #334155; color: #94a3b8; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px; }
+        .diagram-container { background: #fff; border-radius: 8px; padding: 1.5rem; min-height: 100px; display: flex; align-items: center; justify-content: center; overflow: auto; }
+        .diagram-container svg { max-width: 100%; height: auto; }
+        .diagram-container img { max-width: 100%; height: auto; }
+        .explanation { margin-top: 1rem; font-size: 0.85rem; color: #64748b; line-height: 1.5; }
+        .error { background: #7f1d1d33; border: 1px solid #991b1b; border-radius: 8px; padding: 0.75rem 1rem; color: #fca5a5; font-size: 0.85rem; margin-bottom: 1rem; }
+        .code-block { margin-top: 1rem; }
+        .code-block-label { font-size: 0.72rem; color: #475569; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.4rem; }
+        .code-block pre { background: #0f172a; border-radius: 6px; padding: 1rem; font-size: 0.8rem; overflow-x: auto; color: #94a3b8; font-family: 'SF Mono', Monaco, monospace; margin: 0; }
+        .render-error { background: #1c1010; border: 1px solid #7f1d1d; border-radius: 8px; padding: 0.75rem 1rem; color: #fca5a5; font-size: 0.82rem; margin-bottom: 0.75rem; line-height: 1.5; }
+        .render-error strong { color: #f87171; }
+        .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid #ffffff44; border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 0.5rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .links { margin-top: 2rem; text-align: center; }
+        .links a { color: #3b82f6; text-decoration: none; font-size: 0.85rem; margin: 0 0.75rem; }
+        .links a:hover { text-decoration: underline; }
+        .suggestion { background: #1e3a5f; border: 1px solid #3b82f6; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+        .suggestion-header { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #60a5fa; margin-bottom: 0.6rem; }
+        .suggestion-message { color: #93c5fd; font-size: 0.9rem; margin-bottom: 0.75rem; line-height: 1.5; }
+        .suggestion-meta { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
+        .suggestion-type { background: #3b82f6; color: #fff; font-size: 0.75rem; padding: 0.25rem 0.7rem; border-radius: 4px; font-weight: 700; letter-spacing: 0.03em; }
+        .suggestion-confidence { color: #94a3b8; font-size: 0.75rem; }
+        .suggestion-conf-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem; }
+        .suggestion-conf-track { flex: 1; height: 6px; background: #1e3a5f; border: 1px solid #334155; border-radius: 3px; overflow: hidden; }
+        .suggestion-conf-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+        .suggestion-conf-fill.high { background: #22c55e; }
+        .suggestion-conf-fill.med  { background: #f59e0b; }
+        .suggestion-conf-fill.low  { background: #ef4444; }
+        .suggestion-conf-label { font-size: 0.72rem; color: #94a3b8; min-width: 2.8rem; text-align: right; }
+        .suggestion-actions { display: flex; gap: 0.75rem; }
+        .btn-proceed { background: #22c55e; }
+        .btn-proceed:hover:not(:disabled) { background: #16a34a; }
+        .btn-dismiss { background: #475569; }
+        .btn-dismiss:hover:not(:disabled) { background: #64748b; }
+        .error-reject { background: #1c1010; border: 1px solid #7f1d1d; border-radius: 8px; padding: 0.75rem 1rem; color: #fca5a5; font-size: 0.875rem; margin-bottom: 1rem; line-height: 1.5; }
+        .download-actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
+        .btn-download-png { background: #0ea5e9; }
+        .btn-download-png:hover:not(:disabled) { background: #0284c7; }
+        .btn-download-svg { background: #8b5cf6; }
+        .btn-download-svg:hover:not(:disabled) { background: #7c3aed; }
+        .btn-download-drawio { background: #f97316; }
+        .btn-download-drawio:hover:not(:disabled) { background: #ea580c; }
+        .btn-open-drawio { background: #f97316; display: flex; align-items: center; gap: 0.4rem; }
+        .btn-open-drawio:hover:not(:disabled) { background: #ea580c; }
+        .drawio-hint { margin-top: 0.6rem; background: #1a1a2e; border: 1px solid #f97316; border-radius: 6px; padding: 0.6rem 0.9rem; font-size: 0.78rem; color: #fdba74; line-height: 1.6; }
+        .drawio-hint strong { color: #fb923c; }
+        .gen-explanation { margin-top: 1rem; border: 1px solid #1e3a5f; border-radius: 8px; overflow: hidden; }
+        .gen-explanation > summary { list-style: none; cursor: pointer; background: #0f172a; padding: 0.6rem 1rem; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #60a5fa; user-select: none; display: flex; align-items: center; gap: 0.5rem; }
+        .gen-explanation > summary::before { content: '\25B6'; font-size: 0.6rem; transition: transform 0.2s; }
+        .gen-explanation[open] > summary::before { transform: rotate(90deg); }
+        .gen-explanation-body { padding: 0.9rem 1rem; display: flex; flex-direction: column; gap: 1rem; background: #0d1b2a; }
+        .gen-section-label { font-size: 0.68rem; color: #475569; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.4rem; }
+        .entity-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+        .entity-chip { background: #1e3a5f; color: #93c5fd; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 12px; border: 1px solid #2d5a8e; font-weight: 500; }
+        .rel-list { display: flex; flex-direction: column; gap: 0.35rem; }
+        .rel-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; }
+        .rel-node { color: #e2e8f0; font-weight: 500; }
+        .rel-arrow { color: #475569; font-size: 0.75rem; }
+        .rel-type-badge { background: #1e293b; color: #64748b; font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 3px; border: 1px solid #334155; margin-left: 0.25rem; }
+        .reasoning-text { font-size: 0.82rem; color: #94a3b8; line-height: 1.55; }
+        .generation-mode { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.75rem; font-size: 0.78rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 4px; }
+        .generation-mode.llm { background: #14532d44; color: #4ade80; border: 1px solid #166534; }
+        .generation-mode.rule { background: #1e3a5f44; color: #93c5fd; border: 1px solid #1e40af; }
+        .mode-indicator { margin-top: 0.5rem; font-size: 0.8rem; color: #64748b; }
+        .mode-indicator .badge-auto { color: #94a3b8; font-weight: 600; }
+        .mode-indicator .badge-manual { color: #60a5fa; font-weight: 600; }
+        .classification-info { display: flex; flex-wrap: wrap; gap: 1.25rem; padding: 0.75rem 1rem; background: #0f172a; border-radius: 8px; margin-bottom: 1rem; }
+        .class-item { display: flex; flex-direction: column; gap: 0.2rem; min-width: 80px; }
+        .class-label { font-size: 0.68rem; color: #475569; text-transform: uppercase; letter-spacing: 0.07em; }
+        .class-value { font-size: 0.85rem; color: #e2e8f0; font-weight: 500; }
+        .class-confidence { display: flex; align-items: center; gap: 0.5rem; }
+        .conf-bar { width: 72px; height: 4px; background: #1e293b; border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+        .conf-fill { height: 100%; border-radius: 2px; background: #3b82f6; }
+        .conf-fill.high { background: #22c55e; }
+        .conf-fill.med  { background: #f59e0b; }
+        .conf-fill.low  { background: #ef4444; }
+        .class-mode-badge { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 4px; }
+        .class-mode-badge.llm      { background: #14532d44; color: #4ade80; border: 1px solid #166534; }
+        .class-mode-badge.rule     { background: #1e3a5f44; color: #93c5fd; border: 1px solid #1e40af; }
+        .class-mode-badge.fallback { background: #431407aa; color: #fdba74; border: 1px solid #c2410c; }
+        .fallback-notice { display: flex; align-items: flex-start; gap: 0.6rem; margin-bottom: 1rem; background: #431407; border: 1px solid #c2410c; border-radius: 8px; padding: 0.7rem 1rem; font-size: 0.82rem; color: #fed7aa; line-height: 1.5; }
+        .fallback-notice-icon { font-size: 1rem; flex-shrink: 0; line-height: 1.4; }
+        .divider { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; color: #475569; font-size: 0.8rem; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #334155; }
+        .pdf-section { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; padding: 1rem; background: #1e293b; border-radius: 8px; border: 1px dashed #334155; flex-wrap: wrap; }
+        .pdf-filename { flex: 1; font-size: 0.85rem; color: #64748b; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        input[type="file"] { display: none; }
+        .btn-choose-file { background: #334155; }
+        .btn-choose-file:hover:not(:disabled) { background: #475569; }
+        .btn-pdf { background: #7c3aed; }
+        .btn-pdf:hover:not(:disabled) { background: #6d28d9; }
+        .pdf-preview { margin-top: 1rem; padding: 0.75rem 1rem; background: #0f172a; border-radius: 8px; border-left: 3px solid #7c3aed; }
+        .pdf-preview-label { font-size: 0.72rem; color: #7c3aed; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.4rem; }
+        .pdf-preview-text { font-size: 0.8rem; color: #64748b; line-height: 1.6; word-break: break-word; }
+        .pdf-preview-toggle { margin-top: 0.5rem; background: none; border: none; padding: 0; font-size: 0.75rem; color: #7c3aed; font-weight: 600; cursor: pointer; text-decoration: underline; opacity: 0.85; }
+        .pdf-preview-toggle:hover { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
+
+        function MermaidDiagram({ code }) {
+            const containerRef = useRef(null);
+            useEffect(() => {
+                if (!containerRef.current || !code) return;
+                const id = 'mermaid-' + Math.random().toString(36).slice(2, 10);
+                mermaid.render(id, code)
+                    .then(({ svg }) => {
+                        if (containerRef.current) containerRef.current.innerHTML = svg;
+                    })
+                    .catch(() => {
+                        if (containerRef.current) {
+                            containerRef.current.innerHTML =
+                                '<pre style="color:#f87171;font-size:0.8rem;white-space:pre-wrap">' +
+                                code.replace(/</g, '&lt;') + '</pre>';
+                        }
+                    });
+            }, [code]);
+            return <div ref={containerRef} style={{width:'100%'}} />;
+        }
+
+        const DIAGRAM_TYPES = [
+            { value: '', label: 'Auto-detect' },
+            { value: 'CLASS', label: 'Class Diagram' },
+            { value: 'SEQUENCE', label: 'Sequence Diagram' },
+            { value: 'ER', label: 'ER Diagram' },
+            { value: 'COMPONENT', label: 'Component Diagram' },
+            { value: 'DEPLOYMENT', label: 'Deployment Diagram' },
+            { value: 'USE_CASE', label: 'Use Case Diagram' },
+        ];
+
+        function App() {
+            const [text, setText] = useState('A user logs in through an auth service that queries a database');
+            const [diagramType, setDiagramType] = useState('');
+            const [result, setResult] = useState(null);
+            const [suggestion, setSuggestion] = useState(null);
+            const [error, setError] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [pdfFile, setPdfFile] = useState(null);
+            const [pdfLoading, setPdfLoading] = useState(false);
+            const pdfInputRef = useRef(null);
+
+            const [showFullPdfText, setShowFullPdfText] = useState(false);
+
+            function cleanPdfText(raw) {
+                if (!raw) return '';
+                // Collapse runs of whitespace / newlines into single spaces
+                return raw
+                    .replace(/\r\n|\r/g, '\n')          // normalise line endings
+                    .replace(/[ \t]+/g, ' ')              // collapse horizontal whitespace
+                    .replace(/\n{2,}/g, '\n\n')          // keep double-newline as paragraph break
+                    .replace(/([^\n])\n([^\n])/g, '$1 $2') // join soft-wrapped lines
+                    .trim();
+            }
+
+            // Map display name to enum value
+            function mapTypeToEnum(displayType) {
+                const mapping = {
+                    'Class Diagram': 'CLASS',
+                    'Sequence Diagram': 'SEQUENCE',
+                    'ER Diagram': 'ER',
+                    'Entity Relationship Diagram': 'ER',
+                    'Component Diagram': 'COMPONENT',
+                    'Deployment Diagram': 'DEPLOYMENT',
+                    'Use Case Diagram': 'USE_CASE',
+                };
+                return mapping[displayType] || displayType.toUpperCase().replace(/\s+/g, '_').replace('_DIAGRAM', '');
+            }
+
+            async function handleGenerate(overrideType = null, forceGenerate = false) {
+                setError(null);
+                setResult(null);
+                setSuggestion(null);
+
+                if (!text || !text.trim()) {
+                    setError('Please enter a description.');
+                    return;
+                }
+
+                // When the user has explicitly selected a type, skip classification entirely.
+                // overrideType comes from the SUGGEST "Proceed" button — also treated as manual.
+                const resolvedType = overrideType || diagramType || null;
+                const isManual = !!resolvedType;
+
+                setLoading(true);
+                try {
+                    const body = { text };
+                    if (resolvedType) body.diagramType = resolvedType;
+                    if (forceGenerate) body.forceGenerate = true;
+
+                    const res = await fetch('/api/diagram/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body),
+                    });
+
+                    const envelope = await res.json();
+                    const data = envelope.data || envelope;
+
+                    if (!res.ok) {
+                        throw new Error(data.message || envelope.message || 'HTTP ' + res.status);
+                    }
+
+                    if (isManual) {
+                        // Backend skips classification when diagramType is supplied;
+                        // frontend mirrors that by bypassing SUGGEST/REJECT routing.
+                        setResult(data);
+                        return;
+                    }
+
+                    // Auto-detect: route by decision returned from backend
+                    const decision = data.decision;
+                    if (decision === 'SUGGEST') {
+                        setSuggestion({
+                            message: data.message,
+                            diagramType: data.diagramType,
+                            confidenceScore: data.confidenceScore ?? 0,
+                        });
+                        return;
+                    }
+                    if (decision === 'REJECT') {
+                        setError(data.message || 'Please provide a more detailed description so the system can identify the diagram type.');
+                        return;
+                    }
+
+                    setResult(data);
+                } catch (e) {
+                    setError(e.message);
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            function handleProceed() {
+                if (suggestion && suggestion.diagramType) {
+                    const enumType = mapTypeToEnum(suggestion.diagramType);
+                    handleGenerate(enumType, true);
+                }
+            }
+
+            function handleDismiss() {
+                setSuggestion(null);
+            }
+
+            async function downloadDiagram(format) {
+                try {
+                    const res = await fetch(`/api/diagram/${result.id}/${format}`);
+                    if (!res.ok) {
+                        let detail = `HTTP ${res.status}`;
+                        try {
+                            const text = await res.text();
+                            if (text && text.trim().length > 0) detail = text.trim();
+                        } catch (_) {}
+                        const msg = `Download failed (${format.toUpperCase()}): ${detail}`;
+                        console.error(`[downloadDiagram] ${msg}`, { format, diagramId: result.id, status: res.status });
+                        throw new Error(msg);
+                    }
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const ext = format === 'drawio' ? 'drawio' : format;
+                    a.download = `diagram-${result.id}.${ext}`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                } catch (e) {
+                    console.error(`[downloadDiagram] Unhandled error for format=${format}:`, e);
+                    setError(e.message);
+                }
+            }
+
+            function handleKeyDown(e) {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    handleGenerate();
+                }
+            }
+
+            function handlePdfChange(e) {
+                setPdfFile(e.target.files[0] || null);
+            }
+
+            async function handlePdfUpload() {
+                if (!pdfFile) return;
+                setError(null);
+                setResult(null);
+                setSuggestion(null);
+                setPdfLoading(true);
+                try {
+                    const formData = new FormData();
+                    formData.append('file', pdfFile);
+                    const res = await fetch('/api/diagrams/from-pdf', {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    const envelope = await res.json();
+                    const data = envelope.data || envelope;
+                    if (!res.ok) {
+                        throw new Error(data.message || envelope.message || 'HTTP ' + res.status);
+                    }
+                    if (data.id) {
+                        data.diagramImageUrl = `/api/diagrams/${data.id}/png`;
+                    } else {
+                        console.error('PDF generation succeeded but no diagramId was returned — diagram image cannot be displayed.');
+                    }
+                    setResult(data);
+                } catch (e) {
+                    setError(e.message);
+                } finally {
+                    setPdfLoading(false);
+                }
+            }
+
+            return (
+                <div className="app">
+                    <h1>AI Diagram Generator</h1>
+                    <p className="subtitle">Describe your system and get a UML diagram instantly</p>
+
+                    <div className="form">
+                        <div>
+                            <label>Description</label>
+                            <textarea
+                                value={text}
+                                onChange={e => setText(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Describe your system, e.g. 'A user authenticates via an API that queries a database'"
+                            />
+                        </div>
+                        <div className="row">
+                            <div>
+                                <label>Diagram Type</label>
+                                <select value={diagramType} onChange={e => setDiagramType(e.target.value)}>
+                                    {DIAGRAM_TYPES.map(t => (
+                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                    ))}
+                                </select>
+                                <div className="mode-indicator">
+                                    {diagramType
+                                        ? <span>Mode: <span className="badge-manual">Manual ({DIAGRAM_TYPES.find(t => t.value === diagramType)?.label})</span></span>
+                                        : <span>Mode: <span className="badge-auto">Auto-detect</span></span>
+                                    }
+                                </div>
+                            </div>
+                            <button onClick={() => handleGenerate()} disabled={loading}>
+                                {loading && <span className="spinner" />}
+                                {loading
+                                    ? 'Generating\u2026'
+                                    : diagramType
+                                        ? `Generate ${DIAGRAM_TYPES.find(t => t.value === diagramType)?.label ?? diagramType}`
+                                        : 'Generate'
+                                }
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="divider">or upload a PDF</div>
+                    <div className="pdf-section">
+                        <input
+                            ref={pdfInputRef}
+                            type="file"
+                            accept=".pdf"
+                            onChange={handlePdfChange}
+                        />
+                        <button className="btn-choose-file" onClick={() => pdfInputRef.current.click()} disabled={pdfLoading}>
+                            Choose PDF
+                        </button>
+                        <span className="pdf-filename">
+                            {pdfFile ? pdfFile.name : 'No file chosen'}
+                        </span>
+                        <button className="btn-pdf" onClick={handlePdfUpload} disabled={pdfLoading || !pdfFile}>
+                            {pdfLoading && <span className="spinner" />}
+                            {pdfLoading ? 'Generating…' : 'Generate from PDF'}
+                        </button>
+                    </div>
+
+                    {error && <div className="error">{error}</div>}
+
+                    {suggestion && (
+                        <div className="suggestion">
+                            <div className="suggestion-header">Classification Suggestion</div>
+                            <div className="suggestion-meta">
+                                <span className="suggestion-type">{suggestion.diagramType}</span>
+                                <span className="suggestion-confidence">Confidence: {suggestion.confidenceScore}%</span>
+                            </div>
+                            {(() => {
+                                const s = suggestion.confidenceScore;
+                                const tier = s >= 70 ? 'high' : s >= 40 ? 'med' : 'low';
+                                return (
+                                    <div className="suggestion-conf-bar">
+                                        <div className="suggestion-conf-track">
+                                            <div className={`suggestion-conf-fill ${tier}`} style={{width: s + '%'}} />
+                                        </div>
+                                        <span className="suggestion-conf-label">{s}%</span>
+                                    </div>
+                                );
+                            })()}
+                            <p className="suggestion-message">
+                                A <strong>{suggestion.diagramType}</strong> may be appropriate. Do you want to proceed?
+                            </p>
+                            <div className="suggestion-actions">
+                                <button className="btn-proceed" onClick={handleProceed} disabled={loading}>
+                                    {loading && <span className="spinner" />}
+                                    {loading ? 'Generating…' : `Proceed with ${suggestion.diagramType}`}
+                                </button>
+                                <button className="btn-dismiss" onClick={handleDismiss} disabled={loading}>
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {result && (
+                        <div className="result">
+                            <div className="result-header">
+                                <h2>Result</h2>
+                                <span className="badge">{result.diagramType}</span>
+                            </div>
+
+                            {/* Classification info strip */}
+                            <div className="classification-info">
+                                <div className="class-item">
+                                    <span className="class-label">Detected Type</span>
+                                    <span className="class-value">{String(result.diagramType)}</span>
+                                </div>
+                                {result.confidenceScore != null && (() => {
+                                    const s = result.confidenceScore;
+                                    const tier = s >= 70 ? 'high' : s >= 40 ? 'med' : 'low';
+                                    return (
+                                        <div className="class-item">
+                                            <span className="class-label">Confidence</span>
+                                            <div className="class-confidence">
+                                                <div className="conf-bar">
+                                                    <div className={`conf-fill ${tier}`} style={{width: s + '%'}} />
+                                                </div>
+                                                <span className="class-value">{s}%</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                                {result.generationMode && (
+                                    <div className="class-item">
+                                        <span className="class-label">Generation Mode</span>
+                                        <span className={`class-mode-badge ${
+                                            result.generationMode === 'LLM' ? 'llm' :
+                                            result.generationMode === 'TEMPLATE_FALLBACK' ? 'fallback' : 'rule'
+                                        }`}>
+                                            {result.generationMode === 'LLM' ? '\u2736 AI (LLM)' :
+                                             result.generationMode === 'TEMPLATE_FALLBACK' ? '\u26A0 Fallback Template' :
+                                             '\u2699 Rule-Based'}
+                                        </span>
+                                    </div>
+                                )}
+                                {result.modelUsed && (
+                                    <div className="class-item">
+                                        <span className="class-label">Model</span>
+                                        <span className="class-value" style={{color: '#64748b', fontSize: '0.8rem'}}>{result.modelUsed}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {result.generationMode === 'TEMPLATE_FALLBACK' && (
+                                <div className="fallback-notice">
+                                    <span className="fallback-notice-icon">&#x26A0;&#xFE0F;</span>
+                                    <span>{result.message || 'Diagram generation failed. Showing a default template instead.'}</span>
+                                </div>
+                            )}
+                            <div className="diagram-container">
+                                {result.svgContent ? (
+                                    <div dangerouslySetInnerHTML={{ __html: result.svgContent }} />
+                                ) : result.pngBase64 ? (
+                                    <img src={`data:image/png;base64,${result.pngBase64}`} alt="Generated diagram" />
+                                ) : result.mermaidCode ? (
+                                    <MermaidDiagram code={result.mermaidCode} />
+                                ) : result.diagramImageUrl ? (
+                                    <img src={result.diagramImageUrl} alt="Generated diagram" style={{maxWidth: '100%'}} />
+                                ) : (
+                                    <p style={{color: '#64748b'}}>Diagram rendering unavailable — see PlantUML code below.</p>
+                                )}
+                            </div>
+                            {result.id && (
+                                <div className="download-actions">
+                                    <button className="btn-download-png" onClick={() => downloadDiagram('png')}>
+                                        Download PNG
+                                    </button>
+                                    <button className="btn-download-svg" onClick={() => downloadDiagram('svg')}>
+                                        Download SVG
+                                    </button>
+                                    <button className="btn-download-drawio" onClick={() => downloadDiagram('drawio')}>
+                                        Download Draw.io XML
+                                    </button>
+                                </div>
+                            )}
+                            {result.message && (
+                                <p className="explanation">{result.message}</p>
+                            )}
+                            {result.extractedTextPreview && (() => {
+                                const PREVIEW_LIMIT = 400;
+                                const cleaned = cleanPdfText(result.extractedTextPreview);
+                                const isTruncated = cleaned.length > PREVIEW_LIMIT;
+                                const displayed = showFullPdfText || !isTruncated
+                                    ? cleaned
+                                    : cleaned.slice(0, PREVIEW_LIMIT).replace(/\s+\S*$/, '') + '…';
+                                return (
+                                    <div className="pdf-preview">
+                                        <div className="pdf-preview-label">Extracted from PDF:</div>
+                                        <div className="pdf-preview-text">{displayed}</div>
+                                        {isTruncated && (
+                                            <button
+                                                className="pdf-preview-toggle"
+                                                onClick={() => setShowFullPdfText(v => !v)}
+                                            >
+                                                {showFullPdfText ? 'Show less' : 'Show full extracted text'}
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                            {result.explanation && (
+                                <details className="gen-explanation">
+                                    <summary>How this diagram was generated</summary>
+                                    <div className="gen-explanation-body">
+                                        {result.explanation.extractedEntities && result.explanation.extractedEntities.length > 0 && (
+                                            <div>
+                                                <div className="gen-section-label">Extracted entities</div>
+                                                <div className="entity-chips">
+                                                    {result.explanation.extractedEntities.map((e, i) => (
+                                                        <span key={i} className="entity-chip">{e}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {result.explanation.detectedRelationships && result.explanation.detectedRelationships.length > 0 && (
+                                            <div>
+                                                <div className="gen-section-label">Detected relationships</div>
+                                                <div className="rel-list">
+                                                    {result.explanation.detectedRelationships.map((r, i) => (
+                                                        <div key={i} className="rel-item">
+                                                            <span className="rel-node">{r.source}</span>
+                                                            <span className="rel-arrow">&#x2192;</span>
+                                                            <span className="rel-node">{r.target}</span>
+                                                            {r.type && <span className="rel-type-badge">{r.type}</span>}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {result.explanation.typeReasoning && (
+                                            <div>
+                                                <div className="gen-section-label">Diagram type reasoning</div>
+                                                <p className="reasoning-text">{result.explanation.typeReasoning}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </details>
+                            )}
+                            {result.plantUmlCode && (
+                                <div className="code-block">
+                                    {!result.svgContent && !result.pngBase64 && !result.diagramImageUrl && (
+                                        <div className="render-error">
+                                            <strong>Rendering failed.</strong> The diagram could not be rendered as an image. The raw PlantUML code is shown below — you can paste it into <a href="https://www.plantuml.com/plantuml/uml/" target="_blank" rel="noopener noreferrer" style={{color:'#f87171'}}>plantuml.com</a> to view it.
+                                        </div>
+                                    )}
+                                    <div className="code-block-label">PlantUML code</div>
+                                    <pre>{result.plantUmlCode}</pre>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="links">
+                        <a href="/swagger-ui.html">Swagger UI</a>
+                        <a href="/api-docs">OpenAPI Spec</a>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>

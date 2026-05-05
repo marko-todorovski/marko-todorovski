@@ -1,0 +1,102 @@
+[
+  {
+    "text": "A user sends a login request to the AuthService. AuthService calls UserRepository to look up the account. UserRepository returns the user record. AuthService validates the password and returns a JWT token to the user.",
+    "expectedType": "SEQUENCE"
+  },
+  {
+    "text": "Show the flow when a customer places an order: the client calls the OrderService, which calls the InventoryService to reserve stock, then calls the PaymentService to charge the card, and finally returns a confirmation to the client.",
+    "expectedType": "SEQUENCE"
+  },
+  {
+    "text": "The API gateway receives an HTTP request, forwards it to the AuthMiddleware for token validation, then routes it to the appropriate microservice, which queries the database and returns the response.",
+    "expectedType": "SEQUENCE"
+  },
+  {
+    "text": "Describe the password reset flow: the user requests a reset, the NotificationService sends an email, the user clicks the link, the AuthService validates the token, updates the password, and confirms success.",
+    "expectedType": "SEQUENCE"
+  },
+  {
+    "text": "When a file is uploaded: the client sends the file to the UploadController, which stores it in S3 and publishes an event to the message broker. The ProcessingService consumes the event, processes the file, and writes metadata to the database.",
+    "expectedType": "SEQUENCE"
+  },
+  {
+    "text": "Create a class diagram for a library management system. Book has attributes title, author, isbn. Member has name and email. Loan connects Book and Member with attributes borrowDate and returnDate.",
+    "expectedType": "CLASS"
+  },
+  {
+    "text": "Model a payment system: abstract class Payment with method process(). CreditCardPayment and PayPalPayment both extend Payment and override process(). Invoice has a reference to Payment.",
+    "expectedType": "CLASS"
+  },
+  {
+    "text": "Design the class structure for a hospital: Person is abstract with name and dateOfBirth. Doctor extends Person and has a specialization. Patient extends Person and has a medicalHistory. Appointment links Doctor and Patient.",
+    "expectedType": "CLASS"
+  },
+  {
+    "text": "Vehicle is a base class with attributes speed and fuel. Car extends Vehicle and adds doors. Truck extends Vehicle and adds payload. Both implement the Driveable interface which declares a method drive().",
+    "expectedType": "CLASS"
+  },
+  {
+    "text": "Design a notification system: NotificationService interface with method send(). EmailNotification, SMSNotification, and PushNotification all implement NotificationService. NotificationFactory creates instances based on type.",
+    "expectedType": "CLASS"
+  },
+  {
+    "text": "Design the database schema for an online store. The Customer table has id, name, and email. The Order table has id, order_date, and a foreign key customer_id referencing Customer. The OrderItem table links Order to Product with quantity and unit_price.",
+    "expectedType": "ER"
+  },
+  {
+    "text": "University database: Student table with student_id primary key. Course table with course_id primary key. Enrollment table has foreign keys to both Student and Course, plus grade and semester columns.",
+    "expectedType": "ER"
+  },
+  {
+    "text": "Schema for a blog platform: User has user_id, username, email. Post has post_id, title, content, published_at, and a foreign key to User. Comment has comment_id, body, a foreign key to Post, and a foreign key to User.",
+    "expectedType": "ER"
+  },
+  {
+    "text": "Model the relational schema for a hotel reservation system. Room has room_id, type, price_per_night. Guest has guest_id, name, passport_number. Reservation has reservation_id, check_in, check_out, and foreign keys to Room and Guest.",
+    "expectedType": "ER"
+  },
+  {
+    "text": "Database for a music streaming service: Artist table, Album table with a foreign key to Artist, Track table with a foreign key to Album. Playlist table belongs to User. PlaylistTrack is a junction table between Playlist and Track.",
+    "expectedType": "ER"
+  },
+  {
+    "text": "Draw a high-level architecture diagram for a social media platform. The React frontend connects to an API Gateway. The gateway routes traffic to three services: UserService, PostService, and FeedService. All services write to a shared PostgreSQL database and publish events to Kafka.",
+    "expectedType": "ARCHITECTURE"
+  },
+  {
+    "text": "Show the architecture of an e-commerce system. A browser-based UI and a mobile app both call a REST API. The API routes requests to an inventory module, an order module, and a payment module. A Redis cache sits between the API and the database.",
+    "expectedType": "ARCHITECTURE"
+  },
+  {
+    "text": "Architecture of a CI/CD pipeline: Developer commits to GitHub, GitHub Actions triggers a build, the Docker image is pushed to ECR, then deployed to ECS via a rolling update. CloudWatch monitors the running containers.",
+    "expectedType": "ARCHITECTURE"
+  },
+  {
+    "text": "System overview: a mobile client and a web client send requests through an AWS Application Load Balancer to an auto-scaling group of application servers. The application servers connect to RDS for relational data and ElasticSearch for full-text search.",
+    "expectedType": "ARCHITECTURE"
+  },
+  {
+    "text": "Diagram the overall architecture: user browser sends requests to Nginx. Nginx proxies to a Spring Boot app running in Docker. The app reads from PostgreSQL and stores file uploads in MinIO. Prometheus scrapes metrics from the app.",
+    "expectedType": "ARCHITECTURE"
+  },
+  {
+    "text": "Create a C4 context diagram for an internet banking system. The Personal Banking Customer uses the Internet Banking System to manage accounts. The Internet Banking System calls the Mainframe Banking System for account data and uses the Email System to send notifications.",
+    "expectedType": "C4"
+  },
+  {
+    "text": "C4 model for an online learning platform: the Student and the Instructor are external users. The Learning Management System is the central software system. It integrates with a Video Hosting Service and a Payment Gateway.",
+    "expectedType": "C4"
+  },
+  {
+    "text": "C4 context: the end user interacts with the SaaS application. The SaaS application depends on an external Auth0 identity provider for authentication and an external Stripe system for billing.",
+    "expectedType": "C4"
+  },
+  {
+    "text": "Model the system context: a Healthcare Portal is used by Patients and Clinicians. The portal integrates with a Laboratory Information System for test results and with an external Insurance Verification Service.",
+    "expectedType": "C4"
+  },
+  {
+    "text": "C4 diagram: the Mobile App and Web App are used by customers. Both interact with the API System. The API System depends on a third-party Shipping Service and an internal Warehouse Management System.",
+    "expectedType": "C4"
+  }
+]
