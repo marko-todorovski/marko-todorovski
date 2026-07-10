@@ -33,7 +33,9 @@ public class RuleBasedDiagramService {
     private String resolveType(String intent) {
         if (intent == null || intent.isBlank()) return "sequence";
         String lower = intent.toLowerCase();
-        if (lower.contains("object diagram") || lower.contains("instance") || lower.contains("instantiate")) return "object";
+        if (lower.contains("object diagram") || lower.contains("instance") || lower.contains("instantiate")
+                || lower.contains("instantiated object") || lower.contains("values assigned")
+                || lower.contains("associated objects")) return "object";
         if (lower.contains("class")) return "class";
         if (lower.contains("microservice") || lower.contains("api gateway") || lower.contains("service mesh")) return "microservices";
         if (lower.contains("component") || lower.contains("architecture")) return "component";
@@ -83,8 +85,79 @@ public class RuleBasedDiagramService {
     private void buildClassDiagram(StringBuilder sb,
                                    List<String> entities,
                                    List<String> relationships) {
-        entities.forEach(e -> sb.append("class ").append(sanitize(e)).append(" {}\n"));
-        relationships.forEach(r -> sb.append("' ").append(r).append("\n"));
+        entities.forEach(e -> sb.append("class ").append(sanitize(e)).append("\n"));
+        if (relationships.isEmpty()) {
+            // Auto-chain with default association arrows
+            for (int i = 0; i < entities.size() - 1; i++) {
+                sb.append(sanitize(entities.get(i)))
+                  .append(" --> ")
+                  .append(sanitize(entities.get(i + 1)))
+                  .append("\n");
+            }
+        } else {
+            for (String r : relationships) {
+                String arrow = inferClassArrow(r);
+                sb.append(arrow).append("\n");
+            }
+        }
+    }
+
+    /** Infers the correct UML arrow from a free-text relationship hint. */
+    private String inferClassArrow(String rel) {
+        String lower = rel.toLowerCase();
+
+        // ── Multiplicity phrases ─────────────────────────────────────────
+        if (lower.contains("one-to-many") || lower.contains("one to many") || lower.contains("one or many")) {
+            String[] parts = rel.split("(?i)\\s+(?:one[- ]to[- ]many|one\\s+or\\s+many)\\s+", 2);
+            if (parts.length == 2)
+                return sanitize(parts[0].trim()) + " \"1\" --> \"0..*\" " + sanitize(parts[1].trim());
+        }
+        if (lower.contains("many-to-many") || lower.contains("many to many")) {
+            String[] parts = rel.split("(?i)\\s+many[- ]to[- ]many\\s+", 2);
+            if (parts.length == 2)
+                return sanitize(parts[0].trim()) + " \"0..*\" --> \"0..*\" " + sanitize(parts[1].trim());
+        }
+        if (lower.contains("one-to-one") || lower.contains("one to one")) {
+            String[] parts = rel.split("(?i)\\s+one[- ]to[- ]one\\s+", 2);
+            if (parts.length == 2)
+                return sanitize(parts[0].trim()) + " \"1\" --> \"1\" " + sanitize(parts[1].trim());
+        }
+        if (lower.contains("many-to-one") || lower.contains("many to one")) {
+            String[] parts = rel.split("(?i)\\s+many[- ]to[- ]one\\s+", 2);
+            if (parts.length == 2)
+                return sanitize(parts[0].trim()) + " \"0..*\" --> \"1\" " + sanitize(parts[1].trim());
+        }
+
+        // ── Structural keywords ──────────────────────────────────────────
+        if (lower.contains("inherit") || lower.contains("extend") || lower.contains("implement")
+                || lower.contains("is a type of") || lower.contains(" is a ")) {
+            // Extract entity names from "A extends B" → "B <|-- A"
+            String[] parts = rel.split("(?i)\\s+(?:inherits?(?:\\s+from)?|extends?|implements?|is a type of|is an?)\\s+", 2);
+            if (parts.length == 2) return sanitize(parts[1].trim()) + " <|-- " + sanitize(parts[0].trim());
+        }
+        if (lower.contains("contain") || lower.contains("compos") || lower.contains("part of")) {
+            String[] parts = rel.split("(?i)\\s+(?:contains?|is composed of|is part of|part of)\\s+", 2);
+            if (parts.length == 2) return sanitize(parts[0].trim()) + " *-- " + sanitize(parts[1].trim());
+        }
+        if (lower.contains("owned by")) {
+            String[] parts = rel.split("(?i)\\s+owned by\\s+", 2);
+            if (parts.length == 2) return sanitize(parts[0].trim()) + " -- " + sanitize(parts[1].trim());
+        }
+        if (lower.contains("multiple") || lower.contains("several")) {
+            // "A has multiple B" → A "1" o-- "0..*" B
+            String[] parts = rel.split("(?i)\\s+(?:has?|have|contain|owns?)\\s+(?:multiple|several)\\s+", 2);
+            if (parts.length == 2)
+                return sanitize(parts[0].trim()) + " \"1\" o-- \"0..*\" " + sanitize(parts[1].trim());
+        }
+        if (lower.contains("aggregat") || lower.contains("has a") || lower.contains(" has ")) {
+            String[] parts = rel.split("(?i)\\s+(?:aggregates?|has an?|has)\\s+", 2);
+            if (parts.length == 2) return sanitize(parts[0].trim()) + " o-- " + sanitize(parts[1].trim());
+        }
+        if (lower.contains("use") || lower.contains("depend")) {
+            return rel.replace("->", " ..> ").replace("-->", " ..> ");
+        }
+        // Default: replace -> with -->
+        return rel.replace("->", "-->").contains("-->") ? rel.replace("->", "-->") : rel + " --> " + "";
     }
 
     private void buildComponentDiagram(StringBuilder sb,

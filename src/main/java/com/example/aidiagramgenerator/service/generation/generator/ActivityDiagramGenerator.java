@@ -1,27 +1,29 @@
 package com.example.aidiagramgenerator.service.generation.generator;
 
 import com.example.aidiagramgenerator.enums.DiagramType;
+import com.example.aidiagramgenerator.service.ActivityDiagramGeneratorService;
 import com.example.aidiagramgenerator.service.generation.DiagramGenerator;
 import com.example.aidiagramgenerator.service.generation.model.ParsedInput;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Generates PlantUML activity diagram syntax from parsed input.
+ * Generates PlantUML activity diagram syntax by delegating to
+ * {@link ActivityDiagramGeneratorService}.
  *
- * <p>Uses {@code start} / {@code stop} markers with actions connected by {@code -->}.
- * Actions are sourced from the parsed actions list first; if empty, entities are used as steps.</p>
+ * <p>The raw input text is preferred for rich structured parsing (decisions,
+ * loops, fork/join, swimlanes). When the raw content is absent, a synthetic
+ * text is assembled from the parsed actions or entity list so the service
+ * can still produce a meaningful sequential diagram.
  *
- * <p>Output format:</p>
+ * <p>Example output:</p>
  * <pre>
  * {@code
  * @startuml
  * start
- * :Step one;
- * :Step two;
- * --> :Step three;
+ * :Put clothes on;
+ * :Drive to college;
  * stop
  * @enduml
  * }
@@ -30,6 +32,12 @@ import java.util.List;
 @Component
 public class ActivityDiagramGenerator implements DiagramGenerator {
 
+    private final ActivityDiagramGeneratorService generatorService;
+
+    public ActivityDiagramGenerator(ActivityDiagramGeneratorService generatorService) {
+        this.generatorService = generatorService;
+    }
+
     @Override
     public DiagramType supports() {
         return DiagramType.ACTIVITY;
@@ -37,59 +45,31 @@ public class ActivityDiagramGenerator implements DiagramGenerator {
 
     @Override
     public String generate(ParsedInput parsedInput) {
-        List<String> steps = resolveSteps(parsedInput);
+        String raw = parsedInput.getRawContent();
 
-        StringBuilder sb = new StringBuilder("@startuml\n");
-        sb.append("start\n");
-
-        if (steps.isEmpty()) {
-            sb.append(":Initialize;\n");
-            sb.append("--> :Process request;\n");
-            sb.append("--> :Validate input;\n");
-            sb.append("--> :Execute operation;\n");
-            sb.append("--> :Return result;\n");
-        } else {
-            sb.append(":").append(capitalize(steps.get(0))).append(";\n");
-            for (int i = 1; i < steps.size(); i++) {
-                sb.append("--> :").append(capitalize(steps.get(i))).append(";\n");
-            }
+        // Prefer raw text for full structural parsing
+        if (raw != null && !raw.isBlank()) {
+            return generatorService.generateActivityDiagram(raw);
         }
 
-        sb.append("stop\n");
-        sb.append("@enduml");
-
-        return sb.toString();
+        // Fall back to synthesised text from parsed lists
+        String synthetic = synthesize(parsedInput);
+        return generatorService.generateActivityDiagram(synthetic);
     }
 
     /**
-     * Resolves the ordered list of steps.
-     * Prefers explicit actions; falls back to entities.
+     * Builds a plain-text description from the parsed actions or entities
+     * so the service can apply its full parsing pipeline.
      */
-    private List<String> resolveSteps(ParsedInput parsedInput) {
+    private String synthesize(ParsedInput parsedInput) {
         List<String> actions = parsedInput.getActions();
         if (actions != null && !actions.isEmpty()) {
-            return sanitizeAll(actions);
+            return String.join(". ", actions);
         }
         List<String> entities = parsedInput.getEntities();
         if (entities != null && !entities.isEmpty()) {
-            return sanitizeAll(entities);
+            return String.join(". ", entities);
         }
-        return List.of();
-    }
-
-    private List<String> sanitizeAll(List<String> items) {
-        List<String> result = new ArrayList<>(items.size());
-        for (String item : items) {
-            String sanitized = item.replaceAll("[;]", "").trim();
-            if (!sanitized.isBlank()) {
-                result.add(sanitized);
-            }
-        }
-        return result;
-    }
-
-    private String capitalize(String s) {
-        if (s == null || s.isBlank()) return s;
-        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+        return "";
     }
 }

@@ -29,7 +29,9 @@ public class TextInputParser implements InputParser {
             "class", "sequence", "flow", "process", "entity", "relationship",
             "database", "table", "architecture", "system", "component",
             "state", "transition", "bpmn", "workflow", "c4", "container",
-            "service", "microservice", "api", "gateway", "queue", "event"
+            "service", "microservice", "api", "gateway", "queue", "event",
+            "use case", "actor", "actors", "stakeholder", "system boundary",
+            "include", "extend"
     );
 
     /** Pattern to detect capitalised words that likely represent entities. */

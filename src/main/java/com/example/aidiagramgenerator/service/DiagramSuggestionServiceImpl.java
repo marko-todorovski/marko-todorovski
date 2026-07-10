@@ -51,7 +51,7 @@ public class DiagramSuggestionServiceImpl implements DiagramSuggestionService {
     );
 
     private static final List<Map.Entry<Pattern, DiagramType>> EXPLICIT_TYPE_PATTERNS = List.of(
-            Map.entry(Pattern.compile("\\buse[\\s-]?case\\b", Pattern.CASE_INSENSITIVE), DiagramType.USE_CASE),
+            Map.entry(Pattern.compile("\\buse[\\s-]?cases?\\b", Pattern.CASE_INSENSITIVE), DiagramType.USE_CASE),
             Map.entry(Pattern.compile("\\bentity[\\s-]?relationship\\b", Pattern.CASE_INSENSITIVE), DiagramType.ER),
             Map.entry(Pattern.compile("\\ber\\s+diagram\\b", Pattern.CASE_INSENSITIVE), DiagramType.ER),
             Map.entry(Pattern.compile("\\bsequence\\b", Pattern.CASE_INSENSITIVE), DiagramType.SEQUENCE),
@@ -80,8 +80,9 @@ public class DiagramSuggestionServiceImpl implements DiagramSuggestionService {
                     "bundle", "service layer", "data access"
             ),
             DiagramType.USE_CASE, Set.of(
-                    "actor", "scenario", "goal", "system boundary",
-                    "stakeholder", "requirement", "functional", "behavior"
+                    "actor", "actors", "use cases", "scenario", "goal", "system boundary",
+                    "stakeholder", "requirement", "functional", "behavior",
+                    "manages", "functional requirements"
             ),
             DiagramType.ER, Set.of(
                     "table", "column", "primary key", "foreign key", "schema",
@@ -110,13 +111,15 @@ public class DiagramSuggestionServiceImpl implements DiagramSuggestionService {
             ),
             DiagramType.SEQUENCE, Set.of(
                     "sequence", "message", "call", "return", "async", "synchronous",
-                    "request", "response", "interaction", "timeline", "actor", "lifeline",
+                    "request", "response", "interaction", "timeline", "lifeline",
                     "activation", "flow", "step"
             ),
             DiagramType.USE_CASE, Set.of(
-                    "use case", "actor", "user", "scenario", "goal", "system boundary",
-                    "include", "extend", "generalization", "stakeholder", "requirement",
-                    "functional", "behavior", "action"
+                    "use case", "use cases", "actor", "actors", "user", "scenario",
+                    "goal", "system boundary", "include", "extend", "generalization",
+                    "stakeholder", "requirement", "functional", "behavior", "action",
+                    "manages", "functional requirements", "browse", "place order",
+                    "user can", "customer can", "admin can", "administrator can"
             ),
             DiagramType.COMPONENT, Set.of(
                     "component", "module", "package", "library", "dependency",
@@ -147,7 +150,9 @@ public class DiagramSuggestionServiceImpl implements DiagramSuggestionService {
             throw new IllegalArgumentException("Input text cannot be null or empty");
         }
 
-        String normalizedText = inputText.toLowerCase().trim();
+        // Collapse all whitespace sequences (including tabs, newlines, non-breaking spaces from PDFs)
+        // into a single regular space so patterns like \buse[\s-]?case\b match reliably.
+        String normalizedText = inputText.toLowerCase().trim().replaceAll("\\s+", " ");
 
         // Layer 1: Explicit type mention → highest confidence
         DiagramSuggestion explicit = checkExplicitMention(normalizedText);

@@ -27,15 +27,20 @@ public class KeywordBasedDiagramTypeClassifier implements DiagramTypeClassifier 
             DiagramType.C4,           List.of("c4", "container", "deployment", "context diagram"),
             DiagramType.SEQUENCE,     List.of("sequence", "call", "message"),
             DiagramType.ER,           List.of("database", "table", "entity", "relationship", "schema", "column"),
+            DiagramType.USE_CASE,     List.of("use case", "actor", "actors", "stakeholder", "system boundary",
+                                              "<<include>>", "<<extend>>", "include", "extend"),
             DiagramType.ARCHITECTURE, List.of("architecture", "system", "component", "service"),
             DiagramType.ACTIVITY,     List.of("activity", "workflow", "flow", "process", "step", "task", "action",
                                               "procedure", "pipeline", "steps"),
             DiagramType.STATE,        List.of("state", "transition", "lifecycle", "status", "event",
                                               "trigger", "guard", "statechart", "finite"),
             DiagramType.OBJECT,          List.of("object", "instance", "snapshot", "object diagram", "concrete",
-                                                 "instantiate", "instance of"),
+                                                 "instantiate", "instance of", "instantiated object",
+                                                 "values assigned", "associated objects"),
             DiagramType.MICROSERVICES,    List.of("microservices", "microservice", "distributed system",
-                                                 "api gateway", "service mesh", "service registry", "gateway")
+                                                 "api gateway", "service mesh", "service registry", "gateway"),
+            DiagramType.COLLABORATION,    List.of("collaboration diagram", "communication diagram",
+                                                 "objects connected", "numbered messages", "object interaction")
     );
 
     @Override

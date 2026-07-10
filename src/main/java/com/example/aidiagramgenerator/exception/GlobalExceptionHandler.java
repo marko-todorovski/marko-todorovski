@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -77,6 +78,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleDiagramRendering(DiagramRenderingException ex) {
         logger.error("Diagram rendering failed: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+    }
+
+    // ── 405 – Method not allowed ──────────────────────────────────────────
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        logger.warn("Method not allowed: {} {}", ex.getMethod(), ex.getMessage());
+        String message = "HTTP method '" + ex.getMethod() + "' is not supported for this endpoint.";
+        if (ex.getSupportedHttpMethods() != null && !ex.getSupportedHttpMethods().isEmpty()) {
+            message += " Supported methods: " + ex.getSupportedHttpMethods();
+        }
+        return buildResponse(HttpStatus.METHOD_NOT_ALLOWED, message);
     }
 
     // ── 500 – Catch-all ──────────────────────────────────────────────────

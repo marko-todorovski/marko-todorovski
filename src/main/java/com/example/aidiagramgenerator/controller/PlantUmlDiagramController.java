@@ -10,10 +10,12 @@ import com.example.aidiagramgenerator.dto.response.DiagramSuggestionResponse;
 import com.example.aidiagramgenerator.dto.response.EvaluationResponse;
 import com.example.aidiagramgenerator.dto.response.GenerationResult;
 import com.example.aidiagramgenerator.exception.DiagramGenerationException;
+import com.example.aidiagramgenerator.repository.DiagramRepository;
 import com.example.aidiagramgenerator.repository.DomainDiagramEvaluationRepository;
 import com.example.aidiagramgenerator.repository.DomainDiagramRepository;
 import com.example.aidiagramgenerator.service.ConfidenceDiagramService;
 import com.example.aidiagramgenerator.service.DiagramSuggestionService;
+import com.example.aidiagramgenerator.service.MermaidRenderer;
 import com.example.aidiagramgenerator.service.render.DiagramRenderingException;
 import com.example.aidiagramgenerator.service.render.DiagramRenderingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +24,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import com.example.aidiagramgenerator.exception.InvalidDiagramRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -29,9 +32,11 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+
 
 /**
  * REST Controller for PlantUML-based diagram generation.
@@ -50,6 +55,8 @@ public class PlantUmlDiagramController {
     private final DiagramSuggestionService suggestionService;
     private final DiagramRenderingService renderingService;
     private final DomainDiagramRepository diagramRepository;
+    private final DiagramRepository mermaidDiagramRepository;
+    private final MermaidRenderer mermaidRenderer;
     private final DomainDiagramEvaluationRepository evaluationRepository;
 
     public PlantUmlDiagramController(
@@ -57,11 +64,15 @@ public class PlantUmlDiagramController {
             DiagramSuggestionService suggestionService,
             DiagramRenderingService renderingService,
             DomainDiagramRepository diagramRepository,
+            DiagramRepository mermaidDiagramRepository,
+            MermaidRenderer mermaidRenderer,
             DomainDiagramEvaluationRepository evaluationRepository) {
         this.confidenceDiagramService = confidenceDiagramService;
         this.suggestionService = suggestionService;
         this.renderingService = renderingService;
         this.diagramRepository = diagramRepository;
+        this.mermaidDiagramRepository = mermaidDiagramRepository;
+        this.mermaidRenderer = mermaidRenderer;
         this.evaluationRepository = evaluationRepository;
     }
 
@@ -82,9 +93,11 @@ public class PlantUmlDiagramController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Generation failed")
     })
     public ResponseEntity<ApiResponse<GenerationResult>> generateDiagram(@Valid @RequestBody GenerationRequest request) {
-        logger.info("Received diagram generation request");
-        logger.debug("Input text length: {}, requestedType: {}",
-                request.getText() != null ? request.getText().length() : 0, request.getDiagramType());
+        logger.info("POST /api/diagram/generate — diagramType='{}', forceGenerate={}, textLength={}, text='{}'",
+                request.getDiagramType(),
+                request.isForceGenerate(),
+                request.getText() != null ? request.getText().length() : 0,
+                request.getText() != null ? request.getText().replaceAll("\\s+", " ").substring(0, Math.min(200, request.getText().length())) : null);
 
         // Text is required only when no explicit diagram type is provided
         boolean hasType = request.getDiagramType() != null && !request.getDiagramType().isBlank();
@@ -106,9 +119,13 @@ public class PlantUmlDiagramController {
                 return ResponseEntity.status(422).body(ApiResponse.success("Confirmation required", result));
             }
 
-            logger.info("Diagram generated successfully (id: {})", result.getId());
+            logger.info("Diagram generated successfully (id: {}, type: {}, mode: {})",
+                    result.getId(), result.getDiagramType(), result.getGenerationMode());
             return ResponseEntity.ok(ApiResponse.success("Diagram generated successfully", result));
 
+        } catch (InvalidDiagramRequestException e) {
+            logger.warn("Invalid diagram request: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         } catch (DiagramGenerationException e) {
             throw e;
         } catch (Exception e) {
@@ -215,7 +232,7 @@ public class PlantUmlDiagramController {
      * @param id the diagram UUID
      * @return PNG image bytes
      */
-    @GetMapping(value = "/{id}/png", produces = MediaType.IMAGE_PNG_VALUE)
+    @GetMapping(value = "/{id}/png", produces = {MediaType.IMAGE_PNG_VALUE, "image/svg+xml"})
     @Operation(summary = "Get diagram as PNG", description = "Renders the diagram to PNG format")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "PNG image",
@@ -227,18 +244,8 @@ public class PlantUmlDiagramController {
         logger.debug("Rendering diagram to PNG, ID: {}", id);
 
         return diagramRepository.findById(id)
-                .map(diagram -> {
-                    try {
-                        byte[] pngBytes = renderingService.renderToPng(diagram.getPlantUmlCode());
-                        return ResponseEntity.ok()
-                                .contentType(MediaType.IMAGE_PNG)
-                                .body(pngBytes);
-                    } catch (DiagramRenderingException e) {
-                        logger.error("Failed to render PNG for diagram {}: {}", id, e.getMessage());
-                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).<byte[]>build();
-                    }
-                })
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(diagram -> renderPlantUmlPng(id, diagram))
+                .orElseGet(() -> renderMermaidSvgImage(id, "PNG"));
     }
 
     /**
@@ -259,19 +266,53 @@ public class PlantUmlDiagramController {
         logger.debug("Rendering diagram to SVG, ID: {}", id);
 
         return diagramRepository.findById(id)
+                .map(diagram -> renderPlantUmlSvg(id, diagram))
+                .orElseGet(() -> renderMermaidSvgImage(id, "SVG"));
+    }
+
+    private ResponseEntity<byte[]> renderPlantUmlPng(UUID id, com.example.aidiagramgenerator.domain.Diagram diagram) {
+        try {
+            byte[] pngBytes = renderingService.renderToPng(diagram.getPlantUmlCode());
+            return ResponseEntity.ok()
+                    .contentType(MediaType.IMAGE_PNG)
+                    .body(pngBytes);
+        } catch (DiagramRenderingException e) {
+            logger.error("Failed to render PNG for diagram {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    private ResponseEntity<byte[]> renderPlantUmlSvg(UUID id, com.example.aidiagramgenerator.domain.Diagram diagram) {
+        try {
+            byte[] svgBytes = renderingService.renderToSvg(diagram.getPlantUmlCode());
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("image/svg+xml"))
+                    .body(svgBytes);
+        } catch (DiagramRenderingException e) {
+            logger.error("Failed to render SVG for diagram {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    private ResponseEntity<byte[]> renderMermaidSvgImage(UUID id, String requestedFormat) {
+        return mermaidDiagramRepository.findById(id)
                 .map(diagram -> {
                     try {
-                        byte[] svgBytes = renderingService.renderToSvg(diagram.getPlantUmlCode());
+                        String svg = mermaidRenderer.renderToSvg(diagram.getMermaidCode());
                         return ResponseEntity.ok()
                                 .contentType(MediaType.parseMediaType("image/svg+xml"))
-                                .body(svgBytes);
-                    } catch (DiagramRenderingException e) {
-                        logger.error("Failed to render SVG for diagram {}: {}", id, e.getMessage());
+                                .body(svg.getBytes(StandardCharsets.UTF_8));
+                    } catch (Exception e) {
+                        logger.error("Failed to render Mermaid {} for diagram {}: {}",
+                                requestedFormat, id, e.getMessage(), e);
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).<byte[]>build();
                     }
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
+
+    // Draw.io download is handled by DiagramDrawIoController which supports
+    // both the domain_diagrams table (PlantUML) and the legacy diagrams table (Mermaid/PDF).
 
     // ==================== Evaluation Endpoints ====================
 

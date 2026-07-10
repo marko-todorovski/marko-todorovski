@@ -98,5 +98,65 @@
   {
     "text": "C4 diagram: the Mobile App and Web App are used by customers. Both interact with the API System. The API System depends on a third-party Shipping Service and an internal Warehouse Management System.",
     "expectedType": "C4"
+  },
+
+  {
+    "text": "Design a class hierarchy for a shapes library. Shape is an abstract base class with methods area() and perimeter(). Circle extends Shape and has a radius attribute. Rectangle extends Shape with width and height. Triangle extends Shape with sides a, b, c. A Canvas contains many Shapes and has a draw() method.",
+    "expectedType": "CLASS"
+  },
+  {
+    "text": "Model an inheritance hierarchy for a file-system abstraction. FileSystemItem is abstract with attributes name and path. File extends FileSystemItem and adds size and mimeType. Directory extends FileSystemItem and contains zero or more FileSystemItems. SymbolicLink extends FileSystemItem and references another FileSystemItem.",
+    "expectedType": "CLASS"
+  },
+  {
+    "text": "Design a class diagram for a notification system using interfaces. NotificationHandler is abstract with method handle(message). EmailHandler extends NotificationHandler and uses an SMTP gateway. SMSHandler extends NotificationHandler and uses a Twilio client. PushHandler extends NotificationHandler and uses FCM. Each handler has a priority and a retry policy.",
+    "expectedType": "CLASS"
+  },
+
+  {
+    "text": "Design a class diagram emphasising composition. Computer is composed of exactly one Motherboard and one or more StorageDrives. Motherboard is composed of a CPU and RAM slots. A CPU has clockSpeed and coreCount. Removing the Computer destroys all its contained components.",
+    "expectedType": "CLASS"
+  },
+  {
+    "text": "Model an order management system with composition. Order is the aggregate root, composed of one or more OrderLines. Each OrderLine references a Product by association and has quantity and unitPrice. Order has a status field and a createdAt timestamp. Invoice is composed of one or more InvoiceItems and references its source Order.",
+    "expectedType": "CLASS"
+  },
+  {
+    "text": "Design a class diagram for a university administration system emphasising containment. University is composed of one or more Faculties. Each Faculty is composed of one or more Departments. Each Department contains one or more Courses. Course has courseCode, title, and credits. Professor is associated with one or more Courses but is not owned by them.",
+    "expectedType": "CLASS"
+  },
+
+  {
+    "text": "Create a class diagram for a course registration system with explicit multiplicity. A Student can register for 1 to 10 Courses per semester. A Course can have 5 to 200 Students. Each registration is an Enrollment with registrationDate and grade. A Course is taught by 1 or more Professors; a Professor teaches 0 to many Courses.",
+    "expectedType": "CLASS"
+  },
+  {
+    "text": "Model a project management tool with explicit multiplicities. A Project has 1 to many Teams. Each Team has exactly 1 TeamLead (a subtype of Employee) and 1 to 15 Members. A Member can belong to 0 or more Projects simultaneously. A Task belongs to exactly 1 Project and is assigned to exactly 1 Member. Sprint contains 1 to many Tasks.",
+    "expectedType": "CLASS"
+  },
+  {
+    "text": "Design a hospital scheduling system. A Hospital employs 1 or more Doctors and 1 or more Nurses. A Patient has 0 or more Appointments. Each Appointment is with exactly 1 Doctor and may involve 0 or more Nurses. A Ward contains 1 to 30 Beds. A Patient occupies 0 or 1 Beds at a time.",
+    "expectedType": "CLASS"
+  },
+
+  {
+    "text": "Diagram the runtime state of a banking application at a specific moment. Account instance a1 has accountNumber=ACC-001 and balance=2500. Account instance a2 has accountNumber=ACC-002 and balance=800. Customer instance cust1 has name=John Smith. cust1 owns both a1 and a2. Transaction instance t1 has amount=200 and represents a transfer from a1 to a2.",
+    "expectedType": "OBJECT"
+  },
+  {
+    "text": "Show the object snapshot for an e-commerce checkout session. Cart instance cart1 belongs to User instance u1 with email=alice@example.com. CartItem instances item1 and item2 are contained in cart1. item1 references Product p1 with name=Laptop and price=999. item2 references Product p2 with name=Mouse and price=29. Order instance o1 is created from cart1 with status=confirmed.",
+    "expectedType": "OBJECT"
+  },
+  {
+    "text": "Runtime state of a university system at registration time. Faculty instance f1 has name=Engineering. Department instance d1 has name=Computer Science and is part of f1. Professor instance prof1 has name=Dr Smith and belongs to d1. Course instance cs101 has code=CS101 and is taught by prof1. Student instance stu1 has name=Bob and is enrolled in cs101 with grade=A.",
+    "expectedType": "OBJECT"
+  },
+  {
+    "text": "Object diagram for a car rental snapshot. RentalAgency instance agency1 has name=DriveNow. Car instances car1 and car2 are owned by agency1; car1 has rego=ABC123 and is available, car2 has rego=XYZ789 and is rented. Customer instance cust1 has name=Maria. Rental instance r1 links cust1 to car2 with startDate=2024-04-01 and endDate=2024-04-05.",
+    "expectedType": "OBJECT"
+  },
+  {
+    "text": "Show the object state of a library at 2024-05-01. Library instance lib1 owns Book instances b1 (title=Design Patterns) and b2 (title=Clean Code). Member instance m1 has name=Alex. Loan instance l1 links m1 to b1 with loanDate=2024-04-20 and dueDate=2024-05-04. Loan instance l2 links m1 to b2 with loanDate=2024-04-25 and dueDate=2024-05-09.",
+    "expectedType": "OBJECT"
   }
 ]

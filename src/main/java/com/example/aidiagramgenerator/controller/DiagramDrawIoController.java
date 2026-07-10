@@ -133,7 +133,6 @@ public class DiagramDrawIoController {
         logger.info("GET /api/diagram/{}/drawio/download — returning file attachment", id);
 
         String xml;
-        String filename = drawIoExportService.generateFilename(id);
 
         Optional<Diagram> legacyOpt2 = diagramRepository.findById(id);
         Optional<com.example.aidiagramgenerator.domain.Diagram> domainOpt2 = legacyOpt2.isPresent()
@@ -150,9 +149,9 @@ public class DiagramDrawIoController {
                 ? legacyOpt2.get().getMermaidCode()
                 : domainOpt2.get().getPlantUmlCode();
 
-        if (legacyOpt2.isPresent()) {
-            filename = drawIoExportService.generateFilename(legacyOpt2.get());
-        }
+        String filename = legacyOpt2.isPresent()
+                ? drawIoExportService.generateFilename(legacyOpt2.get())
+                : drawIoExportService.generateFilename(id);
 
         try {
             if (legacyOpt2.isPresent()) {
@@ -177,4 +176,3 @@ public class DiagramDrawIoController {
                 .body(xml.getBytes(StandardCharsets.UTF_8));
     }
 }
-

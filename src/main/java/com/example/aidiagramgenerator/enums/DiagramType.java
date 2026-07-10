@@ -11,12 +11,15 @@ public enum DiagramType {
     CLASS("class"),
     SEQUENCE("sequence"),
     ER("er"),
+    USE_CASE("use_case"),
     ARCHITECTURE("architecture"),
     C4("c4"),
     OBJECT("object"),
     ACTIVITY("activity"),
     STATE("state"),
     COLLABORATION("collaboration"),
+    COMPONENT("component"),
+    DEPLOYMENT("deployment"),
     MICROSERVICES("microservices");
 
     private final String value;

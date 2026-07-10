@@ -6,7 +6,7 @@
     <title>AI Diagram Generator</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.26.10/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 
     <style>
@@ -124,11 +124,16 @@
         .pdf-preview-text { font-size: 0.8rem; color: #64748b; line-height: 1.6; word-break: break-word; }
         .pdf-preview-toggle { margin-top: 0.5rem; background: none; border: none; padding: 0; font-size: 0.75rem; color: #7c3aed; font-weight: 600; cursor: pointer; text-decoration: underline; opacity: 0.85; }
         .pdf-preview-toggle:hover { opacity: 1; }
+        .demo-bar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+        .demo-bar label { font-size: 0.85rem; color: #94a3b8; margin-bottom: 0; white-space: nowrap; }
+        .demo-select { background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; padding: 0.55rem 0.75rem; font-size: 0.88rem; flex: 1; cursor: pointer; }
+        .demo-select:focus { outline: none; border-color: #3b82f6; }
+        .demo-badge { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; padding: 0.2rem 0.55rem; border-radius: 4px; background: #1e3a5f; color: #60a5fa; border: 1px solid #1e40af; white-space: nowrap; }
     </style>
 </head>
 <body>
     <div id="root"></div>
-    <script type="text/babel">
+    <script type="text/babel" data-presets="env,react">
         const { useState, useEffect, useRef } = React;
 
         mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
@@ -153,6 +158,43 @@
             return <div ref={containerRef} style={{width:'100%'}} />;
         }
 
+        function ResultMetadata({ result }) {
+            if (!result) return null;
+            const conf = result.confidenceScore ?? 100;
+            const tier = conf >= 70 ? 'high' : conf >= 40 ? 'med' : 'low';
+            const mode = result.generationMode || 'RULE_BASED';
+            const model = result.modelUsed || 'Rule-Based';
+            const badgeClass = mode === 'LLM' ? 'llm' : mode === 'TEMPLATE_FALLBACK' ? 'fallback' : 'rule';
+            const badgeLabel = mode === 'LLM' ? '\u2736 AI (LLM)'
+                             : mode === 'TEMPLATE_FALLBACK' ? '\u26A0 Fallback Template'
+                             : '\u2699 Rule-Based';
+            return (
+                <div className="classification-info">
+                    <div className="class-item">
+                        <span className="class-label">Detected Type</span>
+                        <span className="class-value">{String(result.diagramType)}</span>
+                    </div>
+                    <div className="class-item">
+                        <span className="class-label">Confidence</span>
+                        <div className="class-confidence">
+                            <div className="conf-bar">
+                                <div className={`conf-fill ${tier}`} style={{width: conf + '%'}} />
+                            </div>
+                            <span className="class-value">{conf}%</span>
+                        </div>
+                    </div>
+                    <div className="class-item">
+                        <span className="class-label">Generation Mode</span>
+                        <span className={`class-mode-badge ${badgeClass}`}>{badgeLabel}</span>
+                    </div>
+                    <div className="class-item">
+                        <span className="class-label">Model</span>
+                        <span className="class-value" style={{color: '#64748b', fontSize: '0.8rem'}}>{model}</span>
+                    </div>
+                </div>
+            );
+        }
+
         const DIAGRAM_TYPES = [
             { value: '', label: 'Auto-detect' },
             { value: 'CLASS', label: 'Class Diagram' },
@@ -161,11 +203,206 @@
             { value: 'COMPONENT', label: 'Component Diagram' },
             { value: 'DEPLOYMENT', label: 'Deployment Diagram' },
             { value: 'USE_CASE', label: 'Use Case Diagram' },
+            { value: 'OBJECT', label: 'Object Diagram' },
+            { value: 'ACTIVITY', label: 'Activity Diagram' },
+            { value: 'STATE', label: 'State Diagram' },
+            { value: 'COLLABORATION', label: 'Collaboration Diagram' },
+            { value: 'MICROSERVICES_ARCHITECTURE', label: 'Microservices Architecture' },
+        ];
+
+        const DEMO_EXAMPLES = [
+            {
+                label: '— Demo Examples —',
+                value: '',
+                type: '',
+                text: '',
+            },
+            {
+                label: 'Sequence — User Login Flow',
+                value: 'seq-login',
+                type: 'SEQUENCE',
+                text: 'A user submits their credentials to the login page. The auth service validates the credentials against the user database. If valid, the auth service generates a JWT token and returns it to the client. The client stores the token and uses it for subsequent API requests.',
+            },
+            {
+                label: 'Sequence — Web Search',
+                value: 'seq-web-search',
+                type: 'SEQUENCE',
+                text: 'User sends searchQuery() to Web Server. Web Server sends query() to SQL Server. SQL Server returns results() to Web Server. Web Server returns searchResults() to User.',
+            },
+            {
+                label: 'Sequence — Internet Payment',
+                value: 'seq-payment',
+                type: 'SEQUENCE',
+                text: 'User sends submitPayment() to Web Server. Web Server sends chargeRequest() to Transaction Server. Transaction Server sends authorise() to Bank. Bank confirms authorisation() to Transaction Server. Transaction Server returns receipt() to Web Server. Web Server returns confirmation() to User.',
+            },
+            {
+                label: 'Sequence — ATM Withdraw',
+                value: 'seq-atm',
+                type: 'SEQUENCE',
+                text: 'User sends insertCard() to ATM. ATM sends validateCard() to Bank. Bank returns cardValid() to ATM. User sends enterPin() to ATM. ATM sends verifyPin() to Bank. Bank confirms pinValid() to ATM. User sends requestCash() to ATM. If balance is sufficient, ATM sends dispenseCash() to Dispenser. Dispenser returns cashDispensed() to ATM. ATM returns receipt() to User. Otherwise ATM returns insufficientFunds() to User.',
+            },
+            {
+                label: 'Sequence — Parallel Transaction',
+                value: 'seq-par-transaction',
+                type: 'SEQUENCE',
+                text: 'User sends placeOrder() to Web Server. Web Server sends reserveStock() to Transaction Server. Web Server sends processPayment() to Transaction Server simultaneously. Transaction Server returns stockReserved() to Web Server at the same time. Transaction Server returns paymentProcessed() to Web Server simultaneously. Web Server returns orderConfirmed() to User.',
+            },
+            {
+                label: 'Sequence — Soda Machine',
+                value: 'seq-soda',
+                type: 'SEQUENCE',
+                text: 'User sends insertCoin() to Register. Register returns coinAccepted() to User. User sends selectSoda() to Register. Register sends checkStock() to Dispenser. If soda is available, Dispenser returns sodaAvailable() to Register. Register sends dispenseSoda() to Dispenser. Dispenser returns sodaDispensed() to Register. Register returns change() to User. Otherwise Dispenser returns outOfStock() to Register. Register returns refundCoin() to User.',
+            },
+            {
+                label: 'Use Case — University Enrollment',
+                value: 'uc-enrollment',
+                type: 'USE_CASE',
+                text: 'Actors include Student and Administrator.\nThe student can login, view grades, download materials, and enroll in courses.\nThe administrator can manage courses and approve enrollments.\nEnroll in courses must login first.\nDownload materials must login first.\nView grades might send notification.',
+            },
+            {
+                label: 'ER — E-Commerce Store',
+                value: 'er-ecommerce',
+                type: 'ER',
+                text: 'A Customer places many Orders. Each Order contains one or more OrderItems. Each OrderItem references a Product. A Product belongs to a Category. An Order is processed through a Payment and shipped to a ShippingAddress.',
+            },
+            {
+                label: 'Class — Banking System',
+                value: 'cls-banking',
+                type: 'CLASS',
+                text: 'A BankAccount has an accountNumber, balance, and owner. It supports deposit and withdraw operations. A SavingsAccount extends BankAccount and adds an interestRate. A CheckingAccount extends BankAccount and adds an overdraftLimit. A Customer owns multiple BankAccounts and has a name, email, and customerId.',
+            },
+            {
+                label: 'Component — Microservices Architecture',
+                value: 'cmp-microservices',
+                type: 'COMPONENT',
+                text: 'The API Gateway routes requests to the Auth Service, Order Service, and Product Service. The Auth Service connects to the User Database. The Order Service depends on the Inventory Service and the Payment Service. The Payment Service integrates with an external Payment Gateway. All services publish events to a Message Broker consumed by the Notification Service.',
+            },
+            {
+                label: 'Deployment — Cloud Web Application',
+                value: 'dep-cloud',
+                type: 'DEPLOYMENT',
+                text: 'The application runs on AWS. A CloudFront CDN sits in front of an Application Load Balancer. The load balancer distributes traffic to two EC2 instances running the Spring Boot application. The application instances connect to an RDS PostgreSQL database in a private subnet. An S3 bucket stores static assets. All components are deployed inside a VPC.',
+            },
+            {
+                label: 'Object — Shopping Cart Snapshot',
+                value: 'obj-cart',
+                type: 'OBJECT',
+                text: 'A snapshot of a shopping cart at checkout. The Cart instance belongs to Customer john_doe. The Cart contains two OrderItem instances. OrderItem1 references Product laptop with quantity 1 and price 999. OrderItem2 references Product mouse with quantity 2 and price 25. The Customer instance has address set to New York.',
+            },
+            {
+                label: 'Activity — User Registration Flow',
+                value: 'act-register',
+                type: 'ACTIVITY',
+                text: 'The user opens the registration form and fills in their name, email, and password. The system validates the input. If the email is already taken, the system shows an error and prompts the user to try again. If valid, the system creates the account, sends a verification email, and redirects the user to the dashboard.',
+            },
+            {
+                label: 'Activity — Arriving at College',
+                value: 'act-college',
+                type: 'ACTIVITY',
+                text: '1. Wake up\n2. Have breakfast\n3. Pack bag\n4. Leave home\n5. Travel to college\n6. Arrive at campus\n7. Attend morning lecture\n8. Take a break\n9. Attend afternoon lab\n10. Go home',
+            },
+            {
+                label: 'Activity — Taxi or Bus Decision',
+                value: 'act-taxi-bus',
+                type: 'ACTIVITY',
+                text: 'Leave the office. Check the weather. If it is raining then take a taxi otherwise take the bus. Arrive at destination.',
+            },
+            {
+                label: 'Activity — Beverage Vending Machine',
+                value: 'act-vending',
+                type: 'ACTIVITY',
+                text: 'Insert coin. Select beverage. Check if the selected item is available. If the item is available then dispense the beverage and return change otherwise return the coin and display out of stock message. Collect the beverage.',
+            },
+            {
+                label: 'Activity — Consulting Firm Swimlane',
+                value: 'act-consulting',
+                type: 'ACTIVITY',
+                text: 'Salesperson: Call client\nSalesperson: Send proposal\nConsultant: Review requirements\nConsultant: Prepare presentation\nTechnician: Install equipment\nTechnician: Run tests\nCustomer: Sign contract',
+            },
+            {
+                label: 'Activity — Loop: Process Orders',
+                value: 'act-loop',
+                type: 'ACTIVITY',
+                text: 'Receive order batch. For each order, validate the order details, calculate the total, and dispatch the shipment. Generate daily summary report.',
+            },
+            {
+                label: 'State — Order Lifecycle',
+                value: 'sta-order',
+                type: 'STATE',
+                text: 'An order starts in the Pending state. When the payment is received the order transitions to Confirmed. After the warehouse picks the items the order moves to Shipped. Once the carrier delivers the package the order becomes Delivered. If the customer returns the package the order transitions to Returned. At any point before shipping the order can be Cancelled.',
+            },
+            {
+                label: 'State — Light Switch',
+                value: 'sta-light',
+                type: 'STATE',
+                text: '[*] --> Off\nOff --> On : switch on\nOn --> Off : switch off',
+            },
+            {
+                label: 'State — CD Player',
+                value: 'sta-cd-player',
+                type: 'STATE',
+                text: '[*] --> Stopped\nStopped --> Playing : play\nPlaying --> Stopped : stop\nPlaying --> Paused : pause button\nPaused --> Playing : play\nPaused --> Stopped : stop\nStopped --> [*]\nstate Playing {\n  do / read CD\n}\nstate Paused {\n  exit / turn green LED on\n}',
+            },
+            {
+                label: 'State — CD Player (Advanced)',
+                value: 'sta-cd-player-advanced',
+                type: 'STATE',
+                text: '[*] --> Stopped\nStopped --> Playing : play button\nStopped --> TurnedOff : power off button\nStopped --> TurnedOff : after 30 min\nPlaying --> Paused : pause button\nPlaying --> Stopped : stop button\nPlaying --> TurnedOff : power off button\nPaused --> Playing : play button\nPaused --> Stopped : stop button\nPaused --> TurnedOff : power off button\nTurnedOff --> [*]\nstate Playing {\n  entry / turn blue LED on\n  do / read CD\n  exit / turn blue LED off\n}\nstate Paused {\n  entry / blink green LED\n  do / wait for input\n  exit / turn green LED on\n}\nstate Stopped {\n  entry / reset track position\n  do / idle\n}',
+            },
+            {
+                label: 'State — Screen Saver (Timed)',
+                value: 'sta-screensaver',
+                type: 'STATE',
+                text: '[*] --> Working\nWorking --> Screensaving : after 15 min\nScreensaving --> Working : keystroke\nWorking --> Stopped : power off\nStopped --> [*]',
+            },
+            {
+                label: 'State — GUI Lifecycle',
+                value: 'sta-gui',
+                type: 'STATE',
+                text: '[*] --> Initializing\nInitializing : do / booting up\nInitializing --> Working\nWorking --> ShuttingDown : shut down\nShuttingDown --> [*]',
+            },
+            {
+                label: 'State — Screen Saving (Timed + Guarded)',
+                value: 'sta-screensaving',
+                type: 'STATE',
+                text: '[*] --> Working\nWorking --> Screensaving : after 15 min unattended\nScreensaving --> Working : keystroke\nScreensaving --> [*] : shutdown',
+            },
+            {
+                label: 'Component — Portal System',
+                value: 'cmp-portal',
+                type: 'COMPONENT',
+                text: 'component "Index Page"\ncomponent "Menu Page"\ncomponent "Login"\ncomponent "News"\ncomponent "File Download"\n\n"Menu Page" --> "Index Page"\n"Login" --> "Index Page"\n"News" --> "Menu Page"\n"File Download" --> "Menu Page"',
+            },
+            {
+                label: 'Component — Sales Web App (SSL + JDBC)',
+                value: 'cmp-sales',
+                type: 'COMPONENT',
+                text: 'component "Web Browser"\ncomponent "Sales Software"\ndatabase "MySQL"\n\n"Web Browser" --> "Sales Software" : SSL\n"Sales Software" --> "MySQL" : JDBC',
+            },
+            {
+                label: 'Component — Web App Stack',
+                value: 'cmp-web-stack',
+                type: 'COMPONENT',
+                text: 'Web Browser --> Apache Server : HTTP\nApache Server --> Java Servlet : HTTP\nJava Servlet --> MySQL : JDBC\nJava Servlet --> Apache Server : SSL',
+            },
+            {
+                label: 'Collaboration — Checkout Process',
+                value: 'col-checkout',
+                type: 'COLLABORATION',
+                text: 'The Browser sends a place order request to the OrderController. The OrderController asks the InventoryService to reserve the items. The InventoryService responds with a reservation confirmation. The OrderController then calls the PaymentService to charge the customer. The PaymentService returns a transaction id. Finally the OrderController notifies the NotificationService to send an order confirmation email.',
+            },
+            {
+                label: 'Microservices — E-Commerce Platform',
+                value: 'ms-ecommerce',
+                type: 'MICROSERVICES_ARCHITECTURE',
+                text: 'The API Gateway routes all incoming traffic and forwards requests to the Auth Service, Product Service, Order Service, and Cart Service. The Auth Service manages authentication and connects to the User Database. The Product Service retrieves catalogue data from the Product Database. The Order Service depends on the Inventory Service and the Payment Service. The Payment Service integrates with an external Stripe Gateway. All services publish domain events to a Kafka message broker consumed by the Notification Service.',
+            },
         ];
 
         function App() {
             const [text, setText] = useState('A user logs in through an auth service that queries a database');
             const [diagramType, setDiagramType] = useState('');
+            const [selectedDemo, setSelectedDemo] = useState('');
             const [result, setResult] = useState(null);
             const [suggestion, setSuggestion] = useState(null);
             const [error, setError] = useState(null);
@@ -197,6 +434,12 @@
                     'Component Diagram': 'COMPONENT',
                     'Deployment Diagram': 'DEPLOYMENT',
                     'Use Case Diagram': 'USE_CASE',
+                    'Object Diagram': 'OBJECT',
+                    'Activity Diagram': 'ACTIVITY',
+                    'State Diagram': 'STATE',
+                    'Collaboration Diagram': 'COLLABORATION',
+                    'Microservices Architecture': 'MICROSERVICES_ARCHITECTURE',
+                    'Microservices Diagram': 'MICROSERVICES_ARCHITECTURE',
                 };
                 return mapping[displayType] || displayType.toUpperCase().replace(/\s+/g, '_').replace('_DIAGRAM', '');
             }
@@ -206,19 +449,23 @@
                 setResult(null);
                 setSuggestion(null);
 
+                const resolvedType = overrideType || diagramType || null;
+
                 if (!text || !text.trim()) {
-                    setError('Please enter a description.');
-                    return;
+                    if (!resolvedType) {
+                        setError('Please enter a description.');
+                        return;
+                    }
+                    // Manual type with no description — fall through to generate default template
                 }
 
                 // When the user has explicitly selected a type, skip classification entirely.
                 // overrideType comes from the SUGGEST "Proceed" button — also treated as manual.
-                const resolvedType = overrideType || diagramType || null;
                 const isManual = !!resolvedType;
 
                 setLoading(true);
                 try {
-                    const body = { text };
+                    const body = { text: text || '' };
                     if (resolvedType) body.diagramType = resolvedType;
                     if (forceGenerate) body.forceGenerate = true;
 
@@ -231,7 +478,7 @@
                     const envelope = await res.json();
                     const data = envelope.data || envelope;
 
-                    if (!res.ok) {
+                    if (!res.ok && res.status !== 422) {
                         throw new Error(data.message || envelope.message || 'HTTP ' + res.status);
                     }
 
@@ -309,6 +556,19 @@
                 }
             }
 
+            function handleDemoSelect(e) {
+                const val = e.target.value;
+                setSelectedDemo(val);
+                if (!val) return;
+                const example = DEMO_EXAMPLES.find(ex => ex.value === val);
+                if (!example) return;
+                setText(example.text);
+                setDiagramType(example.type);
+                setResult(null);
+                setSuggestion(null);
+                setError(null);
+            }
+
             function handlePdfChange(e) {
                 setPdfFile(e.target.files[0] || null);
             }
@@ -336,6 +596,10 @@
                     } else {
                         console.error('PDF generation succeeded but no diagramId was returned — diagram image cannot be displayed.');
                     }
+                    // Ensure all metadata fields are present (defensive normalization)
+                    if (data.confidenceScore == null) data.confidenceScore = 100;
+                    if (!data.modelUsed)       data.modelUsed       = 'Rule-Based';
+                    if (!data.generationMode)  data.generationMode  = 'RULE_BASED';
                     setResult(data);
                 } catch (e) {
                     setError(e.message);
@@ -350,11 +614,19 @@
                     <p className="subtitle">Describe your system and get a UML diagram instantly</p>
 
                     <div className="form">
+                        <div className="demo-bar">
+                            <span className="demo-badge">Demo Examples</span>
+                            <select className="demo-select" value={selectedDemo} onChange={handleDemoSelect}>
+                                {DEMO_EXAMPLES.map(ex => (
+                                    <option key={ex.value} value={ex.value}>{ex.label}</option>
+                                ))}
+                            </select>
+                        </div>
                         <div>
                             <label>Description</label>
                             <textarea
                                 value={text}
-                                onChange={e => setText(e.target.value)}
+                                onChange={e => { setText(e.target.value); if (suggestion) setSuggestion(null); }}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Describe your system, e.g. 'A user authenticates via an API that queries a database'"
                             />
@@ -428,12 +700,12 @@
                                 );
                             })()}
                             <p className="suggestion-message">
-                                A <strong>{suggestion.diagramType}</strong> may be appropriate. Do you want to proceed?
+                                {suggestion.message || <>Your description appears to describe a <strong>{suggestion.diagramType}</strong>. Do you want to proceed?</>}
                             </p>
                             <div className="suggestion-actions">
                                 <button className="btn-proceed" onClick={handleProceed} disabled={loading}>
                                     {loading && <span className="spinner" />}
-                                    {loading ? 'Generating…' : `Proceed with ${suggestion.diagramType}`}
+                                    {loading ? 'Generating…' : 'Proceed'}
                                 </button>
                                 <button className="btn-dismiss" onClick={handleDismiss} disabled={loading}>
                                     Cancel
@@ -449,47 +721,7 @@
                                 <span className="badge">{result.diagramType}</span>
                             </div>
 
-                            {/* Classification info strip */}
-                            <div className="classification-info">
-                                <div className="class-item">
-                                    <span className="class-label">Detected Type</span>
-                                    <span className="class-value">{String(result.diagramType)}</span>
-                                </div>
-                                {result.confidenceScore != null && (() => {
-                                    const s = result.confidenceScore;
-                                    const tier = s >= 70 ? 'high' : s >= 40 ? 'med' : 'low';
-                                    return (
-                                        <div className="class-item">
-                                            <span className="class-label">Confidence</span>
-                                            <div className="class-confidence">
-                                                <div className="conf-bar">
-                                                    <div className={`conf-fill ${tier}`} style={{width: s + '%'}} />
-                                                </div>
-                                                <span className="class-value">{s}%</span>
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
-                                {result.generationMode && (
-                                    <div className="class-item">
-                                        <span className="class-label">Generation Mode</span>
-                                        <span className={`class-mode-badge ${
-                                            result.generationMode === 'LLM' ? 'llm' :
-                                            result.generationMode === 'TEMPLATE_FALLBACK' ? 'fallback' : 'rule'
-                                        }`}>
-                                            {result.generationMode === 'LLM' ? '\u2736 AI (LLM)' :
-                                             result.generationMode === 'TEMPLATE_FALLBACK' ? '\u26A0 Fallback Template' :
-                                             '\u2699 Rule-Based'}
-                                        </span>
-                                    </div>
-                                )}
-                                {result.modelUsed && (
-                                    <div className="class-item">
-                                        <span className="class-label">Model</span>
-                                        <span className="class-value" style={{color: '#64748b', fontSize: '0.8rem'}}>{result.modelUsed}</span>
-                                    </div>
-                                )}
-                            </div>
+                            <ResultMetadata result={result} />
 
                             {result.generationMode === 'TEMPLATE_FALLBACK' && (
                                 <div className="fallback-notice">

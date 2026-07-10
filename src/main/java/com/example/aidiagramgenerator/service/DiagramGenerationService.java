@@ -85,10 +85,17 @@ public class DiagramGenerationService {
      * @return a {@link DiagramResult} with type, Mermaid code, and explanation
      */
     public DiagramResult generateFromText(String text, DiagramType requestedType) {
+        logger.info("DiagramGenerationService.generateFromText — requestedType={}, textIsBlank={}, textLength={}, text='{}'",
+                requestedType,
+                text == null || text.isBlank(),
+                text != null ? text.length() : 0,
+                text);
+
         // --- Try LLM generation first ---
         try {
             DiagramResult llmResult = generateViaLlm(text, requestedType);
             if (llmResult != null) {
+                logger.info("GENERATOR_SELECTED=LLM — requestedType={}", requestedType);
                 return llmResult;
             }
         } catch (Exception e) {
@@ -97,6 +104,7 @@ public class DiagramGenerationService {
 
         // --- Fallback: rule-based generation ---
         logger.warn("LLM_FALLBACK_TRIGGERED - using rule-based generation");
+        logger.info("GENERATOR_SELECTED=RULE_BASED — requestedType={}", requestedType);
         return generateRuleBased(text, requestedType);
     }
 
@@ -222,6 +230,7 @@ public class DiagramGenerationService {
             case SEQUENCE      -> generateSequenceDiagram(hasUser, hasService, hasDatabase);
             case CLASS         -> generateClassDiagram(hasUser, hasService, hasDatabase);
             case ER            -> generateErDiagram(hasUser, hasService, hasDatabase);
+            case USE_CASE      -> generateUseCaseDiagram(hasUser, hasService);
             case ARCHITECTURE  -> generateArchitectureDiagram(hasUser, hasService, hasDatabase);
             case C4            -> generateC4Diagram(hasUser, hasService, hasDatabase);
             case ACTIVITY      -> generateActivityDiagram();
@@ -229,6 +238,8 @@ public class DiagramGenerationService {
             case OBJECT          -> generateObjectDiagram();
             case MICROSERVICES   -> generateMicroservicesDiagram();
             case COLLABORATION   -> generateClassDiagram(hasUser, hasService, hasDatabase);
+            case COMPONENT       -> generateComponentDiagram();
+            case DEPLOYMENT      -> generateDeploymentDiagram();
         };
 
         // --- Build explanation ---
@@ -307,6 +318,20 @@ public class DiagramGenerationService {
         return sb.toString().stripTrailing();
     }
 
+    private String generateUseCaseDiagram(boolean hasUser, boolean hasService) {
+        StringBuilder sb = new StringBuilder("graph LR\n");
+        sb.append("    User[User]\n");
+        sb.append("    Login((Login))\n");
+        sb.append("    ViewInfo((View Information))\n");
+        sb.append("    User --> Login\n");
+        sb.append("    User --> ViewInfo\n");
+        if (hasService) {
+            sb.append("    ManageService((Manage Service))\n");
+            sb.append("    User --> ManageService\n");
+        }
+        return sb.toString().stripTrailing();
+    }
+
     private String generateArchitectureDiagram(boolean hasUser, boolean hasService, boolean hasDatabase) {
         StringBuilder sb = new StringBuilder("graph TD\n");
         if (hasUser) sb.append("    User[User]\n");
@@ -326,6 +351,32 @@ public class DiagramGenerationService {
         if (hasUser && hasService) sb.append("    Rel(user, service, \"Uses\")\n");
         if (hasService && hasDatabase) sb.append("    Rel(service, db, \"Reads/Writes\")\n");
         return sb.toString().stripTrailing();
+    }
+
+    private String generateComponentDiagram() {
+        return "@startuml\n" +
+               "component \"Client\"\n" +
+               "component \"Service\"\n" +
+               "database \"Database\"\n" +
+               "\n" +
+               "\"Client\" --> \"Service\" : HTTP\n" +
+               "\"Service\" --> \"Database\" : JDBC\n" +
+               "@enduml";
+    }
+
+    private String generateDeploymentDiagram() {
+        return "@startuml\n" +
+               "node \"Client\" {\n" +
+               "  artifact \"Browser\"\n" +
+               "}\n" +
+               "node \"App Server\" {\n" +
+               "  artifact \"Application\"\n" +
+               "}\n" +
+               "database \"Database\"\n" +
+               "\n" +
+               "\"Client\" --> \"App Server\" : HTTPS\n" +
+               "\"App Server\" --> \"Database\" : JDBC\n" +
+               "@enduml";
     }
 
     // ---- Utility methods ----

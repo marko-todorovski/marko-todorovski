@@ -191,9 +191,9 @@ class PlantUmlGenerationServiceImplTest {
             String uml = service.generate(model, style, SEED);
 
             assertTrue(uml.contains("@startuml"));
-            // Only one Client participant declaration
-            int count = countOccurrences(uml, "Client\" as Client");
-            assertEquals(1, count, "Client participant should be declared once");
+            // Client is an actor-type word; declared without quotes as "actor Client"
+            int count = countOccurrences(uml, "actor Client");
+            assertEquals(1, count, "Client participant should be declared once as actor");
         }
 
         @Test
@@ -211,6 +211,252 @@ class PlantUmlGenerationServiceImplTest {
                     "Should reference participants");
             assertTrue(uml.contains("doWork()"),
                     "Should use action as message label");
+        }
+
+        @Test
+        @DisplayName("Request message (sends) should use solid -> arrow")
+        void requestMessageUsesSolidArrow() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("User"), new EntityNode("ATM")),
+                    List.of(new Relationship("User", "ATM", "sends", "sendPin()", null)),
+                    List.of());
+            StyleProfile style = styleFor(DiagramType.SEQUENCE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertTrue(uml.contains("User -> ATM : sendPin()"),
+                    "Request should use solid '->' arrow");
+            assertFalse(uml.contains("User ->> ATM"),
+                    "Request should not use async '->>' arrow");
+        }
+
+        @Test
+        @DisplayName("Return message (returns) should use dotted --> arrow")
+        void returnMessageUsesDottedArrow() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("User"), new EntityNode("ATM")),
+                    List.of(new Relationship("ATM", "User", "returns", "cashDispensed()", null)),
+                    List.of());
+            StyleProfile style = styleFor(DiagramType.SEQUENCE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertTrue(uml.contains("ATM --> User : cashDispensed()"),
+                    "Return should use dotted '-->' arrow");
+        }
+
+        @Test
+        @DisplayName("Confirmation message should use dotted --> arrow")
+        void confirmationMessageUsesDottedArrow() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("Bank"), new EntityNode("ATM")),
+                    List.of(new Relationship("Bank", "ATM", "confirms", "approved()", null)),
+                    List.of());
+            StyleProfile style = styleFor(DiagramType.SEQUENCE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertTrue(uml.contains("Bank --> ATM : approved()"),
+                    "Confirmation should use dotted '-->' arrow");
+        }
+
+        @Test
+        @DisplayName("Mixed flow: request -> then confirmation -->")
+        void mixedRequestAndConfirmationArrows() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("User"), new EntityNode("ATM"), new EntityNode("Bank")),
+                    List.of(
+                            new Relationship("User", "ATM", "sends", "sendPin()", null),
+                            new Relationship("ATM", "Bank", "sends", "verifyPin()", null),
+                            new Relationship("Bank", "ATM", "confirms", "pinValid()", null),
+                            new Relationship("ATM", "User", "returns", "accessGranted()", null)
+                    ),
+                    List.of());
+            StyleProfile style = styleFor(DiagramType.SEQUENCE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertTrue(uml.contains("User -> ATM : sendPin()"), "User->ATM request should use ->");
+            assertTrue(uml.contains("ATM -> Bank : verifyPin()"), "ATM->Bank request should use ->");
+            assertTrue(uml.contains("Bank --> ATM : pinValid()"), "Bank->ATM confirmation should use -->");
+            assertTrue(uml.contains("ATM --> User : accessGranted()"), "ATM->User return should use -->");
+        }
+
+        @Test
+        @DisplayName("Should emit alt/else/end blocks from ALT fragment relationships")
+        void shouldGenerateAltBlock() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("ATM"), new EntityNode("Bank"), new EntityNode("User")),
+                    List.of(
+                            new Relationship("__ALT__", "__START__", "alt_start", "amount > 1000", null),
+                            new Relationship("ATM", "Bank", "sends", "requestConfirmation()", null),
+                            new Relationship("__ALT__", "__ELSE__", "alt_else", "", null),
+                            new Relationship("ATM", "User", "sends", "dispenseCash()", null),
+                            new Relationship("__ALT__", "__END__", "alt_end", null, null)
+                    ),
+                    List.of());
+            StyleProfile style = styleFor(DiagramType.SEQUENCE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertTrue(uml.contains("alt amount > 1000"), "Should emit alt block with condition");
+            assertTrue(uml.contains("else"), "Should emit else branch");
+            assertTrue(uml.contains("end"), "Should close alt block with end keyword");
+            assertTrue(uml.contains("requestConfirmation()"), "Should include if-branch message");
+            assertTrue(uml.contains("dispenseCash()"), "Should include else-branch message");
+        }
+
+        @Test
+        @DisplayName("Should emit alt/end without else when no else branch present")
+        void shouldGenerateAltWithoutElse() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("Server"), new EntityNode("User")),
+                    List.of(
+                            new Relationship("__ALT__", "__START__", "alt_start", "credentials valid", null),
+                            new Relationship("Server", "User", "sends", "dashboardData()", null),
+                            new Relationship("__ALT__", "__END__", "alt_end", null, null)
+                    ),
+                    List.of());
+            StyleProfile style = styleFor(DiagramType.SEQUENCE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertTrue(uml.contains("alt credentials valid"), "Should emit alt with condition");
+            assertTrue(uml.contains("end"), "Should close alt block");
+            assertFalse(uml.contains("else"), "Should not emit else when no else branch");
+            assertTrue(uml.contains("dashboardData()"), "Should include if-branch message");
+        }
+
+        @Test
+        @DisplayName("Should not declare __ALT__ as a participant")
+        void altMarkersNotDeclaredAsParticipants() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("ATM"), new EntityNode("Bank")),
+                    List.of(
+                            new Relationship("__ALT__", "__START__", "alt_start", "balance > 0", null),
+                            new Relationship("ATM", "Bank", "sends", "check()", null),
+                            new Relationship("__ALT__", "__END__", "alt_end", null, null)
+                    ),
+                    List.of());
+            StyleProfile style = styleFor(DiagramType.SEQUENCE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertFalse(uml.contains("participant \"__ALT__\""), "Should not declare __ALT__ as participant");
+            assertFalse(uml.contains("participant \"__START__\""), "Should not declare __START__ as participant");
+        }
+
+        @Test
+        @DisplayName("Should emit par/else/end blocks from PAR fragment relationships")
+        void shouldGenerateParBlock() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("WebServer"), new EntityNode("SQLServer"), new EntityNode("TS")),
+                    List.of(
+                            new Relationship("__PAR__", "__START__", "par_start", null, null),
+                            new Relationship("WebServer", "SQLServer", "sends", "sendData()", null),
+                            new Relationship("__PAR__", "__ELSE__", "par_else", null, null),
+                            new Relationship("WebServer", "TS", "sends", "sendData()", null),
+                            new Relationship("__PAR__", "__END__", "par_end", null, null)
+                    ),
+                    List.of());
+            StyleProfile style = styleFor(DiagramType.SEQUENCE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertTrue(uml.contains("par"), "Should emit par keyword");
+            assertTrue(uml.contains("else"), "Should emit else to separate parallel branches");
+            assertTrue(uml.contains("end"), "Should close par block with end");
+            assertTrue(uml.contains("sendData()"), "Should include parallel branch messages");
+        }
+
+        @Test
+        @DisplayName("Should not declare __PAR__ as a participant")
+        void parMarkersNotDeclaredAsParticipants() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("WebServer"), new EntityNode("SQLServer")),
+                    List.of(
+                            new Relationship("__PAR__", "__START__", "par_start", null, null),
+                            new Relationship("WebServer", "SQLServer", "sends", "sendData()", null),
+                            new Relationship("__PAR__", "__END__", "par_end", null, null)
+                    ),
+                    List.of());
+            StyleProfile style = styleFor(DiagramType.SEQUENCE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertFalse(uml.contains("participant \"__PAR__\""), "Should not declare __PAR__ as participant");
+            assertFalse(uml.contains("participant \"__START__\""), "Should not declare __START__ as participant");
+        }
+
+        @Test
+        @DisplayName("Should declare single-word actor without quotes")
+        void shouldDeclareActorWithoutQuotes() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("User"), new EntityNode("Server")),
+                    List.of(new Relationship("User", "Server", "sends", "login()", null)),
+                    List.of());
+            StyleProfile style = styleFor(DiagramType.SEQUENCE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertTrue(uml.contains("actor User"), "User should be declared as 'actor User' (no quotes)");
+            assertFalse(uml.contains("actor \"User\""), "Should not use quoted form for simple actor name");
+        }
+
+        @Test
+        @DisplayName("Should declare multi-word participant with short alias")
+        void shouldDeclareMultiWordParticipantWithShortAlias() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("User"), new EntityNode("Web Server"), new EntityNode("SQL Server")),
+                    List.of(
+                            new Relationship("User", "Web Server", "sends", "request()", null),
+                            new Relationship("Web Server", "SQL Server", "sends", "query()", null)
+                    ),
+                    List.of());
+            StyleProfile style = styleFor(DiagramType.SEQUENCE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertTrue(uml.contains("participant \"Web Server\" as WS"),
+                    "Web Server should be declared with short alias WS");
+            assertTrue(uml.contains("participant \"SQL Server\" as SS"),
+                    "SQL Server should be declared with short alias SS");
+        }
+
+        @Test
+        @DisplayName("Should use short alias in arrows for multi-word participants")
+        void shouldUseShortAliasInArrows() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("User"), new EntityNode("Web Server"), new EntityNode("SQL Server")),
+                    List.of(
+                            new Relationship("User", "Web Server", "sends", "request()", null),
+                            new Relationship("Web Server", "SQL Server", "sends", "query()", null),
+                            new Relationship("SQL Server", "Web Server", "returns", "result()", null)
+                    ),
+                    List.of());
+            StyleProfile style = styleFor(DiagramType.SEQUENCE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertTrue(uml.contains("WS"), "Web Server alias WS should appear in output");
+            assertTrue(uml.contains("SS"), "SQL Server alias SS should appear in output");
+            assertFalse(uml.contains("Web_Server"), "Underscore alias should not appear when short alias exists");
+            assertFalse(uml.contains("SQL_Server"), "Underscore alias should not appear when short alias exists");
+        }
+
+        @Test
+        @DisplayName("Transaction Server should be declared with alias TS")
+        void shouldDeclareTransactionServerWithAlias() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("User"), new EntityNode("Transaction Server")),
+                    List.of(new Relationship("User", "Transaction Server", "sends", "pay()", null)),
+                    List.of());
+            StyleProfile style = styleFor(DiagramType.SEQUENCE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertTrue(uml.contains("participant \"Transaction Server\" as TS"),
+                    "Transaction Server should be declared with alias TS");
         }
     }
 
@@ -299,10 +545,10 @@ class PlantUmlGenerationServiceImplTest {
 
             String uml = service.generate(model, style, SEED);
 
-            assertTrue(uml.contains("actor \"Admin\""), "Should declare actor");
-            assertTrue(uml.contains("usecase \"ManageUsers\""),
+            assertTrue(uml.contains("actor Admin"), "Should declare actor");
+            assertTrue(uml.contains("(ManageUsers)"),
                     "Should declare use case from entity");
-            assertTrue(uml.contains("usecase \"Create\"") || uml.contains("usecase \"Delete\""),
+            assertTrue(uml.contains("(Create)") || uml.contains("(Delete)"),
                     "Should declare action-derived use cases");
         }
 
@@ -317,10 +563,29 @@ class PlantUmlGenerationServiceImplTest {
 
             String uml = service.generate(model, style, SEED);
 
-            // "usecase \"Login\" as UC_login" should appear exactly once (declaration)
-            int declarations = countOccurrences(uml, "usecase \"Login\" as UC_login");
+            // "  (Login)" (indented inside rectangle) should appear exactly once — the declaration
+            int declarations = countOccurrences(uml, "  (Login)");
             assertEquals(1, declarations,
                     "login use case declaration should appear exactly once");
+        }
+
+        @Test
+        @DisplayName("Should render include and extend dependencies")
+        void shouldRenderIncludeAndExtendDependencies() {
+            SemanticModel model = modelWith(
+                    List.of(new EntityNode("Student")),
+                    List.of(
+                            new Relationship("download materials", "login", "include"),
+                            new Relationship("view grades", "send notification", "extend")),
+                    List.of("download materials", "login", "view grades", "send notification"));
+            StyleProfile style = styleFor(DiagramType.USE_CASE, "top-down", "normal");
+
+            String uml = service.generate(model, style, SEED);
+
+            assertTrue(uml.contains("(Download Materials) ..> (Login) : <<include>>"),
+                    "Should render include dependency with PlantUML use-case syntax");
+            assertTrue(uml.contains("(View Grades) ..> (Send Notification) : <<extend>>"),
+                    "Should render extend dependency with PlantUML use-case syntax");
         }
     }
 

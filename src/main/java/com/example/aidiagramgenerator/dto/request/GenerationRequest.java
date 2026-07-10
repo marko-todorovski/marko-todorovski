@@ -1,5 +1,6 @@
 package com.example.aidiagramgenerator.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.Size;
  */
 public class GenerationRequest {
 
+    @JsonAlias({"description", "inputText"})
     @Size(max = 10000, message = "Text must not exceed 10000 characters")
     private String text;
 

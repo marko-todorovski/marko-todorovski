@@ -123,6 +123,46 @@ public class StyleProfileServiceImpl implements StyleProfileService {
                 SPACING_EXPANDED
         ));
 
+        // Activity Diagram - Top to bottom (natural flow), solid arrows, normal spacing
+        profiles.put(DiagramType.ACTIVITY, new StyleProfile(
+                DiagramType.ACTIVITY,
+                LAYOUT_TOP_TO_BOTTOM,
+                ARROW_SOLID,
+                SPACING_NORMAL
+        ));
+
+        // State Diagram - Top to bottom for state transitions, solid arrows, compact
+        profiles.put(DiagramType.STATE, new StyleProfile(
+                DiagramType.STATE,
+                LAYOUT_TOP_TO_BOTTOM,
+                ARROW_SOLID,
+                SPACING_COMPACT
+        ));
+
+        // Object Diagram - Left to right to show instances, solid arrows, normal spacing
+        profiles.put(DiagramType.OBJECT, new StyleProfile(
+                DiagramType.OBJECT,
+                LAYOUT_LEFT_TO_RIGHT,
+                ARROW_SOLID,
+                SPACING_NORMAL
+        ));
+
+        // Microservices Diagram - Left to right for service topology, dotted for async, expanded
+        profiles.put(DiagramType.MICROSERVICES, new StyleProfile(
+                DiagramType.MICROSERVICES,
+                LAYOUT_LEFT_TO_RIGHT,
+                ARROW_DOTTED,
+                SPACING_EXPANDED
+        ));
+
+        // Collaboration Diagram - Left to right for interaction, dashed arrows, normal
+        profiles.put(DiagramType.COLLABORATION, new StyleProfile(
+                DiagramType.COLLABORATION,
+                LAYOUT_LEFT_TO_RIGHT,
+                ARROW_DASHED,
+                SPACING_NORMAL
+        ));
+
         return profiles;
     }
 

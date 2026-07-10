@@ -55,7 +55,29 @@ public class DiagramClassificationServiceImpl implements DiagramClassificationSe
             Map.entry(Pattern.compile("\\bsequence\\b", Pattern.CASE_INSENSITIVE), DiagramType.SEQUENCE),
             Map.entry(Pattern.compile("\\bclass\\s+diagram\\b", Pattern.CASE_INSENSITIVE), DiagramType.CLASS),
             Map.entry(Pattern.compile("\\bcomponent\\s+diagram\\b", Pattern.CASE_INSENSITIVE), DiagramType.COMPONENT),
-            Map.entry(Pattern.compile("\\bdeployment\\b", Pattern.CASE_INSENSITIVE), DiagramType.DEPLOYMENT)
+            Map.entry(Pattern.compile("\\bsoftware\\s+components?\\b", Pattern.CASE_INSENSITIVE), DiagramType.COMPONENT),
+            Map.entry(Pattern.compile("\\bdeployment\\b", Pattern.CASE_INSENSITIVE), DiagramType.DEPLOYMENT),
+            Map.entry(Pattern.compile("\\bactivity\\s+diagram\\b", Pattern.CASE_INSENSITIVE), DiagramType.ACTIVITY),
+            Map.entry(Pattern.compile("\\bworkflow\\s+diagram\\b", Pattern.CASE_INSENSITIVE), DiagramType.ACTIVITY),
+            Map.entry(Pattern.compile("\\bflowchart\\b", Pattern.CASE_INSENSITIVE), DiagramType.ACTIVITY),
+            Map.entry(Pattern.compile("\\bswimlane\\b", Pattern.CASE_INSENSITIVE), DiagramType.ACTIVITY),
+            Map.entry(Pattern.compile("\\bif\\b.{0,60}\\bthen\\b.{0,60}\\belse\\b", Pattern.CASE_INSENSITIVE | Pattern.DOTALL), DiagramType.ACTIVITY),
+            Map.entry(Pattern.compile("\\bstate\\s+diagram\\b", Pattern.CASE_INSENSITIVE), DiagramType.STATE),
+            Map.entry(Pattern.compile("\\bstate\\s+machine\\b", Pattern.CASE_INSENSITIVE), DiagramType.STATE),
+            Map.entry(Pattern.compile("\\b(?:initial|final)\\s+state\\b", Pattern.CASE_INSENSITIVE), DiagramType.STATE),
+            Map.entry(Pattern.compile("\\btransitions?\\s+(?:to|from|into)\\b", Pattern.CASE_INSENSITIVE), DiagramType.STATE),
+            Map.entry(Pattern.compile("\\b(?:turned?\\s+on|turned?\\s+off|powered\\s+on|powered\\s+off)\\b", Pattern.CASE_INSENSITIVE), DiagramType.STATE),
+            Map.entry(Pattern.compile("\\b(?:shutting\\s+down|shut\\s+down|starting\\s+up)\\b", Pattern.CASE_INSENSITIVE), DiagramType.STATE),
+            Map.entry(Pattern.compile("\\b(?:paused?|playing|screen\\s+sav(?:ing|er)|idle|standby|sleeping|locked)\\b", Pattern.CASE_INSENSITIVE), DiagramType.STATE),
+            Map.entry(Pattern.compile("\\b(?:working|processing|running|stopped|terminated|crashed|rebooting)\\b", Pattern.CASE_INSENSITIVE), DiagramType.STATE),
+            Map.entry(Pattern.compile("\\bobject\\s+diagram\\b", Pattern.CASE_INSENSITIVE), DiagramType.OBJECT),
+            Map.entry(Pattern.compile("\\bcollaboration\\s+diagram\\b", Pattern.CASE_INSENSITIVE), DiagramType.COLLABORATION),
+            Map.entry(Pattern.compile("\\bcommunication\\s+diagram\\b", Pattern.CASE_INSENSITIVE), DiagramType.COLLABORATION),
+            Map.entry(Pattern.compile("\\bobjects\\s+connected\\b", Pattern.CASE_INSENSITIVE), DiagramType.COLLABORATION),
+            Map.entry(Pattern.compile("\\bnumbered\\s+messages\\b", Pattern.CASE_INSENSITIVE), DiagramType.COLLABORATION),
+            Map.entry(Pattern.compile("\\bobject\\s+interaction\\b", Pattern.CASE_INSENSITIVE), DiagramType.COLLABORATION),
+            Map.entry(Pattern.compile("\\bmicroservices?\\s+architecture\\b", Pattern.CASE_INSENSITIVE), DiagramType.MICROSERVICES),
+            Map.entry(Pattern.compile("\\bmicroservices?\\s+diagram\\b", Pattern.CASE_INSENSITIVE), DiagramType.MICROSERVICES)
     );
 
     // ─── Semantic pattern categories ──────────────────────────────────────────
@@ -103,7 +125,9 @@ public class DiagramClassificationServiceImpl implements DiagramClassificationSe
     private static final Set<String> COMPONENT_TERMS = Set.of(
             "module", "package", "library", "dependency", "port",
             "connector", "subsystem", "layer", "api", "microservice",
-            "bundle", "service layer", "data access"
+            "bundle", "service layer", "data access",
+            "component", "software component", "interface",
+            "jdbc", "ssl", "http", "service", "portal", "browser", "database"
     );
 
     /**
@@ -113,6 +137,60 @@ public class DiagramClassificationServiceImpl implements DiagramClassificationSe
             "actor", "use case", "usecase", "scenario", "goal", "system boundary",
             "stakeholder", "requirement", "functional", "behavior",
             "user can", "admin can", "can perform", "can manage", "can view"
+    );
+
+    /**
+     * Activity/workflow terms for ACTIVITY diagrams.
+     */
+    private static final Set<String> ACTIVITY_TERMS = Set.of(
+            "activity", "workflow", "process flow", "flowchart", "step", "action",
+            "decision", "fork", "join", "swimlane", "task", "procedure",
+            "branch", "loop", "parallel", "start", "end",
+            "process", "flow",
+            "if condition", "if then", "else branch", "conditional", "guard condition"
+    );
+
+    /**
+     * State/transition terms for STATE diagrams.
+     */
+    private static final Set<String> STATE_TERMS = Set.of(
+            "state", "transition", "event", "guard", "state machine",
+            "initial state", "final state", "composite state", "substate",
+            "trigger", "entry action", "exit action", "state change",
+            // Concrete lifecycle / device-state vocabulary
+            "turned on", "turned off", "powered on", "powered off",
+            "shutting down", "shut down", "starting up",
+            "paused", "playing", "screen saving", "screen saver",
+            "idle", "standby", "sleeping", "locked",
+            "working", "processing", "running", "stopped", "terminated",
+            "crashed", "rebooting"
+    );
+
+    /**
+     * Object instance terms for OBJECT diagrams.
+     */
+    private static final Set<String> OBJECT_TERMS = Set.of(
+            "object", "instance", "snapshot", "runtime", "concrete", "value",
+            "slot", "attribute value", "link", "instance of", "object diagram",
+            "instantiated object", "values assigned", "associated objects"
+    );
+
+    /**
+     * Microservices architectural terms for MICROSERVICES diagrams.
+     */
+    private static final Set<String> MICROSERVICES_TERMS = Set.of(
+            "microservice", "api gateway", "service mesh", "message broker",
+            "event bus", "service registry", "circuit breaker", "load balancer",
+            "kafka", "rabbitmq", "rest api", "grpc", "sidecar", "service discovery"
+    );
+
+    /**
+     * Collaboration/communication diagram terms for COLLABORATION diagrams.
+     */
+    private static final Set<String> COLLABORATION_TERMS = Set.of(
+            "collaboration diagram", "communication diagram", "objects connected",
+            "numbered messages", "object interaction", "collaboration",
+            "message passing", "object link", "numbered message"
     );
 
     /**
@@ -245,7 +323,7 @@ public class DiagramClassificationServiceImpl implements DiagramClassificationSe
         return """
                 You are a software modeling expert.
                 Classify the following description into one of:
-                CLASS, ER, SEQUENCE, USE_CASE, COMPONENT, DEPLOYMENT.
+                CLASS, ER, SEQUENCE, USE_CASE, COMPONENT, DEPLOYMENT, ACTIVITY, STATE, OBJECT, MICROSERVICES, COLLABORATION.
                 
                 Return ONLY valid JSON:
                 {
@@ -342,15 +420,37 @@ public class DiagramClassificationServiceImpl implements DiagramClassificationSe
         int useCaseScore = countMatches(text, USE_CASE_TERMS);
         int erScore = countMatches(text, ER_INDICATORS);
         int structuralScore = countMatches(text, STRUCTURAL_WORDS);
+        int activityScore = countMatches(text, ACTIVITY_TERMS);
+        int stateScore = countMatches(text, STATE_TERMS);
+        int objectScore = countMatches(text, OBJECT_TERMS);
+        int microservicesScore = countMatches(text, MICROSERVICES_TERMS);
+        int collaborationScore = countMatches(text, COLLABORATION_TERMS);
 
-        logger.debug("Semantic scores — SEQUENCE:{}, DEPLOYMENT:{}, COMPONENT:{}, USE_CASE:{}, ER:{}, CLASS:{}",
-                interactionScore, infrastructureScore, componentScore, useCaseScore, erScore, structuralScore);
+        logger.debug("Semantic scores — SEQUENCE:{}, DEPLOYMENT:{}, COMPONENT:{}, USE_CASE:{}, ER:{}, CLASS:{}, " +
+                        "ACTIVITY:{}, STATE:{}, OBJECT:{}, MICROSERVICES:{}, COLLABORATION:{}",
+                interactionScore, infrastructureScore, componentScore, useCaseScore, erScore, structuralScore,
+                activityScore, stateScore, objectScore, microservicesScore, collaborationScore);
 
         // Find the category with the strongest signal (minimum 2 matches for confidence)
         int threshold = 2;
         // USE_CASE is lowered to 1 — each matched multi-word pattern ("user can", "can view") already
         // scores +2 from countMatches(), so a single phrase is a strong enough signal.
         int useCaseThreshold = 1;
+
+        if (microservicesScore >= threshold) {
+            logger.debug("Semantic pattern: microservices terms dominate → MICROSERVICES");
+            return DiagramType.MICROSERVICES;
+        }
+
+        if (activityScore >= threshold && activityScore >= stateScore) {
+            logger.debug("Semantic pattern: activity terms dominate → ACTIVITY");
+            return DiagramType.ACTIVITY;
+        }
+
+        if (stateScore >= threshold) {
+            logger.debug("Semantic pattern: state terms dominate → STATE");
+            return DiagramType.STATE;
+        }
 
         if (interactionScore >= threshold && interactionScore >= infrastructureScore
                 && interactionScore >= componentScore) {
@@ -380,6 +480,11 @@ public class DiagramClassificationServiceImpl implements DiagramClassificationSe
             return DiagramType.ER;
         }
 
+        if (objectScore >= threshold) {
+            logger.debug("Semantic pattern: object instance terms dominate → OBJECT");
+            return DiagramType.OBJECT;
+        }
+
         if (structuralScore >= threshold) {
             // If ER indicators are also present, lean towards ER
             if (erScore > 0) {
@@ -388,6 +493,11 @@ public class DiagramClassificationServiceImpl implements DiagramClassificationSe
             }
             logger.debug("Semantic pattern: structural words dominate → CLASS");
             return DiagramType.CLASS;
+        }
+
+        if (collaborationScore >= threshold) {
+            logger.debug("Semantic pattern: collaboration terms dominate → COLLABORATION");
+            return DiagramType.COLLABORATION;
         }
 
         logger.debug("No strong semantic pattern detected");
@@ -426,38 +536,71 @@ public class DiagramClassificationServiceImpl implements DiagramClassificationSe
      * @throws InvalidDiagramRequestException if input is too vague
      */
     private DiagramType classifyByKeywordsOrReject(String text) {
-        Map<DiagramType, Set<String>> allKeywords = Map.of(
-                DiagramType.CLASS, Set.of(
+        Map<DiagramType, Set<String>> allKeywords = Map.ofEntries(
+                Map.entry(DiagramType.CLASS, Set.of(
                         "class", "object", "inheritance", "extends", "implements", "interface",
                         "abstract", "polymorphism", "encapsulation", "method", "attribute",
                         "property", "field", "member", "constructor", "instance"
-                ),
-                DiagramType.ER, Set.of(
+                )),
+                Map.entry(DiagramType.ER, Set.of(
                         "entity", "relationship", "database", "table", "column", "primary key",
                         "foreign key", "schema", "attribute", "cardinality", "one-to-many",
                         "many-to-many", "one-to-one", "normalization", "record"
-                ),
-                DiagramType.SEQUENCE, Set.of(
+                )),
+                Map.entry(DiagramType.SEQUENCE, Set.of(
                         "sequence", "message", "call", "return", "async", "synchronous",
                         "request", "response", "interaction", "timeline", "actor", "lifeline",
                         "activation", "flow", "step"
-                ),
-                DiagramType.USE_CASE, Set.of(
+                )),
+                Map.entry(DiagramType.USE_CASE, Set.of(
                         "use case", "actor", "user", "scenario", "goal", "system boundary",
                         "include", "extend", "generalization", "stakeholder", "requirement",
                         "functional", "behavior", "action",
                         "user can", "admin can", "can perform", "can manage", "can view"
-                ),
-                DiagramType.COMPONENT, Set.of(
+                )),
+                Map.entry(DiagramType.COMPONENT, Set.of(
                         "component", "module", "package", "library", "dependency",
                         "port", "connector", "subsystem", "layer", "api", "service",
                         "microservice", "bundle"
-                ),
-                DiagramType.DEPLOYMENT, Set.of(
+                )),
+                Map.entry(DiagramType.DEPLOYMENT, Set.of(
                         "deployment", "server", "node", "device", "artifact", "container",
                         "docker", "kubernetes", "cloud", "infrastructure", "environment",
                         "instance", "host", "virtual machine", "vm", "cluster"
-                )
+                )),
+                Map.entry(DiagramType.ACTIVITY, Set.of(
+                        "activity", "workflow", "process flow", "flowchart", "step", "action",
+                        "decision", "fork", "join", "swimlane", "task", "procedure",
+                        "branch", "loop", "parallel",
+                        "process", "flow",
+                        "if condition", "if then", "else branch", "conditional", "guard condition"
+                )),
+                Map.entry(DiagramType.STATE, Set.of(
+                        "state", "transition", "event", "guard", "state machine",
+                        "initial state", "final state", "trigger", "entry action",
+                        "exit action", "state change", "composite state",
+                        "turned on", "turned off", "powered on", "powered off",
+                        "shutting down", "shut down", "starting up",
+                        "paused", "playing", "screen saving", "screen saver",
+                        "idle", "standby", "sleeping", "locked",
+                        "working", "processing", "running", "stopped", "terminated",
+                        "crashed", "rebooting"
+                )),
+                Map.entry(DiagramType.OBJECT, Set.of(
+                        "object", "instance", "snapshot", "runtime", "concrete",
+                        "slot", "attribute value", "link", "instance of"
+                )),
+                Map.entry(DiagramType.MICROSERVICES, Set.of(
+                        "microservice", "api gateway", "service mesh", "message broker",
+                        "event bus", "circuit breaker", "load balancer",
+                        "kafka", "rabbitmq", "rest api", "grpc", "sidecar"
+                )),
+                Map.entry(DiagramType.COLLABORATION, Set.of(
+                        "collaboration", "collaboration diagram", "communication diagram",
+                        "objects connected", "numbered messages", "object interaction",
+                        "message passing", "communication", "object link", "numbered message",
+                        "cooperative", "participant"
+                ))
         );
 
         DiagramType bestMatch = null;

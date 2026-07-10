@@ -29,6 +29,7 @@ public class GenerationResult {
     private DiagramExplanation explanation;
     private String generationMode;
     private String decision;
+    private String extractedTextPreview;
 
     /**
      * Default constructor for serialization.
@@ -173,6 +174,14 @@ public class GenerationResult {
         this.decision = decision;
     }
 
+    public String getExtractedTextPreview() {
+        return extractedTextPreview;
+    }
+
+    public void setExtractedTextPreview(String extractedTextPreview) {
+        this.extractedTextPreview = extractedTextPreview;
+    }
+
     /**
      * Builder class for GenerationResult.
      */
@@ -256,6 +265,11 @@ public class GenerationResult {
 
         public Builder decision(String decision) {
             result.setDecision(decision);
+            return this;
+        }
+
+        public Builder extractedTextPreview(String extractedTextPreview) {
+            result.setExtractedTextPreview(extractedTextPreview);
             return this;
         }
 

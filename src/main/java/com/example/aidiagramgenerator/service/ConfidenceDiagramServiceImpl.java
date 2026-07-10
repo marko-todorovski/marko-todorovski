@@ -90,24 +90,225 @@ public class ConfidenceDiagramServiceImpl implements ConfidenceDiagramService {
      * Default PlantUML templates returned when the user selects a diagram type manually
      * but provides no description text.
      */
-    private static final Map<DiagramType, String> DEFAULT_TEMPLATES = Map.of(
-            DiagramType.SEQUENCE,
-            "@startuml\nactor User\nUser -> System : request\nSystem --> User : response\n@enduml",
+    private static final Map<DiagramType, String> DEFAULT_TEMPLATES = Map.ofEntries(
+            Map.entry(DiagramType.SEQUENCE,
+                    "@startuml\n" +
+                    "actor User\n" +
+                    "participant \"Auth Service\" as Auth\n" +
+                    "participant \"Order Service\" as Orders\n" +
+                    "database \"Database\" as DB\n" +
+                    "\n" +
+                    "User -> Auth : login(username, password)\n" +
+                    "Auth -> DB : validateCredentials()\n" +
+                    "DB --> Auth : credentials OK\n" +
+                    "Auth --> User : JWT token\n" +
+                    "\n" +
+                    "User -> Orders : createOrder(token, items)\n" +
+                    "Orders -> DB : saveOrder(items)\n" +
+                    "DB --> Orders : orderId\n" +
+                    "Orders --> User : orderConfirmation(orderId)\n" +
+                    "@enduml"),
 
-            DiagramType.CLASS,
-            "@startuml\nclass User {\n  +id\n  +name\n}\n@enduml",
+            Map.entry(DiagramType.CLASS,
+                    "@startuml\n" +
+                    "class User {\n" +
+                    "  +String username\n" +
+                    "  +String email\n" +
+                    "  -String password\n" +
+                    "  +login()\n" +
+                    "  +logout()\n" +
+                    "}\n" +
+                    "class Order {\n" +
+                    "  +String orderId\n" +
+                    "  +Date createdAt\n" +
+                    "  +double totalAmount\n" +
+                    "  +submit()\n" +
+                    "  +cancel()\n" +
+                    "}\n" +
+                    "class Product {\n" +
+                    "  +String name\n" +
+                    "  +double price\n" +
+                    "  +int stock\n" +
+                    "}\n" +
+                    "class Admin {\n" +
+                    "  +manageUsers()\n" +
+                    "}\n" +
+                    "Admin --|> User\n" +
+                    "User \"1\" o-- \"0..*\" Order : places\n" +
+                    "Order \"1\" *-- \"1..*\" Product : contains\n" +
+                    "@enduml"),
 
-            DiagramType.ER,
-            "@startuml\nentity User {\n  id\n  name\n}\n@enduml",
+            Map.entry(DiagramType.ER,
+                    "@startuml\n" +
+                    "entity Customer {\n" +
+                    "  * id : int <<PK>>\n" +
+                    "  --\n" +
+                    "  name : string\n" +
+                    "  email : string\n" +
+                    "}\n" +
+                    "entity Order {\n" +
+                    "  * id : int <<PK>>\n" +
+                    "  --\n" +
+                    "  customer_id : int <<FK>>\n" +
+                    "  total : decimal\n" +
+                    "  status : string\n" +
+                    "}\n" +
+                    "entity Product {\n" +
+                    "  * id : int <<PK>>\n" +
+                    "  --\n" +
+                    "  name : string\n" +
+                    "  price : decimal\n" +
+                    "}\n" +
+                    "entity OrderItem {\n" +
+                    "  * id : int <<PK>>\n" +
+                    "  --\n" +
+                    "  order_id : int <<FK>>\n" +
+                    "  product_id : int <<FK>>\n" +
+                    "  quantity : int\n" +
+                    "}\n" +
+                    "Customer ||--o{ Order : places\n" +
+                    "Order ||--|{ OrderItem : contains\n" +
+                    "Product ||--o{ OrderItem : \"in\"\n" +
+                    "@enduml"),
 
-            DiagramType.COMPONENT,
-            "@startuml\n[Frontend] --> [Backend]\n@enduml",
+            Map.entry(DiagramType.COMPONENT,
+                    "@startuml\n" +
+                    "package \"Frontend\" {\n" +
+                    "  [Web App] as web\n" +
+                    "}\n" +
+                    "package \"Backend\" {\n" +
+                    "  [API Gateway] as gw\n" +
+                    "  [Auth Service] as auth\n" +
+                    "  [Business Logic] as biz\n" +
+                    "}\n" +
+                    "database \"Database\" as db\n" +
+                    "web --> gw : HTTPS\n" +
+                    "gw --> auth : authenticate\n" +
+                    "gw --> biz : delegate\n" +
+                    "biz --> db : query\n" +
+                    "@enduml"),
 
-            DiagramType.DEPLOYMENT,
-            "@startuml\nnode Server {\n  component App\n}\n@enduml",
+            Map.entry(DiagramType.DEPLOYMENT,
+                    "@startuml\n" +
+                    "node \"Client\" {\n" +
+                    "  [Browser]\n" +
+                    "}\n" +
+                    "node \"Web Server\" {\n" +
+                    "  [Nginx]\n" +
+                    "  [Spring Boot App]\n" +
+                    "}\n" +
+                    "database \"PostgreSQL\" as db\n" +
+                    "node \"Cache\" {\n" +
+                    "  [Redis]\n" +
+                    "}\n" +
+                    "Browser --> Nginx : HTTPS\n" +
+                    "Nginx --> [Spring Boot App] : reverse proxy\n" +
+                    "[Spring Boot App] --> db : JDBC\n" +
+                    "[Spring Boot App] --> Redis : cache\n" +
+                    "@enduml"),
 
-            DiagramType.USE_CASE,
-            "@startuml\nactor User\nUser --> (Use System)\n@enduml"
+            Map.entry(DiagramType.USE_CASE,
+                    "@startuml\n" +
+                    "actor Customer\n" +
+                    "actor Admin\n" +
+                    "rectangle \"Shopping System\" {\n" +
+                    "  (Browse Products) as browse\n" +
+                    "  (Add to Cart) as cart\n" +
+                    "  (Checkout) as checkout\n" +
+                    "  (Manage Products) as manage\n" +
+                    "  (View Reports) as reports\n" +
+                    "}\n" +
+                    "Customer --> browse\n" +
+                    "Customer --> cart\n" +
+                    "Customer --> checkout\n" +
+                    "Admin --> manage\n" +
+                    "Admin --> reports\n" +
+                    "checkout ..> (Authenticate) : <<include>>\n" +
+                    "@enduml"),
+
+            Map.entry(DiagramType.OBJECT,
+                    "@startuml\n" +
+                    "object \"alice : Customer\" as alice {\n" +
+                    "  name = \"Alice Smith\"\n" +
+                    "  email = \"alice@example.com\"\n" +
+                    "}\n" +
+                    "object \"order1 : Order\" as order1 {\n" +
+                    "  orderId = \"ORD-001\"\n" +
+                    "  totalAmount = 149.99\n" +
+                    "}\n" +
+                    "object \"laptop : Product\" as laptop {\n" +
+                    "  name = \"Laptop Pro\"\n" +
+                    "  price = 149.99\n" +
+                    "}\n" +
+                    "alice --> order1 : places\n" +
+                    "order1 --> laptop : contains\n" +
+                    "@enduml"),
+
+            Map.entry(DiagramType.ACTIVITY,
+                    "@startuml\n" +
+                    "start\n" +
+                    ":User submits login form;\n" +
+                    "if (Valid credentials?) then (yes)\n" +
+                    "  :Create session token;\n" +
+                    "  :Store token in cookie;\n" +
+                    "  :Redirect to dashboard;\n" +
+                    "else (no)\n" +
+                    "  :Increment failed attempts;\n" +
+                    "  if (Too many failures?) then (yes)\n" +
+                    "    :Lock account;\n" +
+                    "    :Send unlock email;\n" +
+                    "  else (no)\n" +
+                    "    :Show error message;\n" +
+                    "  endif\n" +
+                    "endif\n" +
+                    "stop\n" +
+                    "@enduml"),
+
+            Map.entry(DiagramType.STATE,
+                    "@startuml\n" +
+                    "[*] --> Pending\n" +
+                    "Pending --> Processing : payment received\n" +
+                    "Processing --> Shipped : items dispatched\n" +
+                    "Shipped --> Delivered : package received\n" +
+                    "Delivered --> [*]\n" +
+                    "Pending --> Cancelled : order cancelled\n" +
+                    "Processing --> Cancelled : payment failed\n" +
+                    "Cancelled --> [*]\n" +
+                    "@enduml"),
+
+            Map.entry(DiagramType.COLLABORATION,
+                    "@startuml\n" +
+                    "object Browser\n" +
+                    "object OrderController\n" +
+                    "object InventoryService\n" +
+                    "object PaymentService\n" +
+                    "object NotificationService\n" +
+                    "Browser -> OrderController : placeOrder()\n" +
+                    "OrderController -> InventoryService : reserveItems()\n" +
+                    "InventoryService --> OrderController : reservation OK\n" +
+                    "OrderController -> PaymentService : chargeCustomer()\n" +
+                    "PaymentService --> OrderController : transactionId\n" +
+                    "OrderController -> NotificationService : sendConfirmation()\n" +
+                    "OrderController --> Browser : orderConfirmed\n" +
+                    "@enduml"),
+
+            Map.entry(DiagramType.MICROSERVICES,
+                    "@startuml\n" +
+                    "rectangle \"[API Gateway]\" as gw\n" +
+                    "rectangle \"[Auth Service]\" as auth\n" +
+                    "rectangle \"[Product Service]\" as product\n" +
+                    "rectangle \"[Order Service]\" as order\n" +
+                    "rectangle \"[Payment Service]\" as payment\n" +
+                    "queue \"[Message Broker]\" as broker\n" +
+                    "rectangle \"[Notification Service]\" as notify\n" +
+                    "gw --> auth : authenticate\n" +
+                    "gw --> product : GET /products\n" +
+                    "gw --> order : POST /orders\n" +
+                    "order --> payment : processPayment\n" +
+                    "auth ..> broker : userEvents\n" +
+                    "order ..> broker : orderEvents\n" +
+                    "broker ..> notify : consume\n" +
+                    "@enduml")
     );
 
     /**
@@ -126,10 +327,24 @@ public class ConfidenceDiagramServiceImpl implements ConfidenceDiagramService {
             Map.entry("USE_CASE_DIAGRAM", DiagramType.USE_CASE),
             Map.entry("COMPONENT", DiagramType.COMPONENT),
             Map.entry("COMPONENT_DIAGRAM", DiagramType.COMPONENT),
-            Map.entry("ARCHITECTURE", DiagramType.COMPONENT),
+            Map.entry("ARCHITECTURE", DiagramType.MICROSERVICES),
+            Map.entry("ARCHITECTURE_DIAGRAM", DiagramType.MICROSERVICES),
             Map.entry("C4_CONTEXT", DiagramType.COMPONENT),
+            Map.entry("C4_CONTEXT_DIAGRAM", DiagramType.COMPONENT),
             Map.entry("DEPLOYMENT", DiagramType.DEPLOYMENT),
-            Map.entry("DEPLOYMENT_DIAGRAM", DiagramType.DEPLOYMENT)
+            Map.entry("DEPLOYMENT_DIAGRAM", DiagramType.DEPLOYMENT),
+            Map.entry("OBJECT", DiagramType.OBJECT),
+            Map.entry("OBJECT_DIAGRAM", DiagramType.OBJECT),
+            Map.entry("ACTIVITY", DiagramType.ACTIVITY),
+            Map.entry("ACTIVITY_DIAGRAM", DiagramType.ACTIVITY),
+            Map.entry("STATE", DiagramType.STATE),
+            Map.entry("STATE_DIAGRAM", DiagramType.STATE),
+            Map.entry("COLLABORATION", DiagramType.COLLABORATION),
+            Map.entry("COLLABORATION_DIAGRAM", DiagramType.COLLABORATION),
+            Map.entry("MICROSERVICES", DiagramType.MICROSERVICES),
+            Map.entry("MICROSERVICES_DIAGRAM", DiagramType.MICROSERVICES),
+            Map.entry("MICROSERVICES_ARCHITECTURE", DiagramType.MICROSERVICES),
+            Map.entry("MICROSERVICES_ARCHITECTURE_DIAGRAM", DiagramType.MICROSERVICES)
     );
 
     private final DiagramSuggestionService suggestionService;
@@ -168,21 +383,30 @@ public class ConfidenceDiagramServiceImpl implements ConfidenceDiagramService {
 
     @Override
     public GenerationResult process(String text, String diagramType, Long seed, boolean forceGenerate) {
-        logger.info("Processing diagram request (textLength={}, explicitType={}, seed={}, forceGenerate={})",
+        logger.info("Processing diagram request (textLength={}, explicitType='{}', seed={}, forceGenerate={})",
                 text != null ? text.length() : 0, diagramType, seed, forceGenerate);
 
         // If the user confirmed a SUGGEST (forceGenerate=true) or explicitly supplied a
         // diagram type, skip classification entirely.
         if (forceGenerate || (diagramType != null && !diagramType.isBlank())) {
+            // Guard: forceGenerate=true with no diagramType is not meaningful
+            if (diagramType == null || diagramType.isBlank()) {
+                throw new InvalidDiagramRequestException(
+                        "Diagram type must be specified when forceGenerate is true");
+            }
             DiagramType mapped = mapToEnum(diagramType);
+            logger.info("Normalized diagramType: '{}' → {}", diagramType, mapped);
             if (text == null || text.isBlank()) {
                 // No description — render the built-in template for this type
                 logger.info("Explicit type {} with no text — using default template", mapped);
                 return generateFromTemplate(mapped, seed);
             }
-            logger.info("Explicit diagram type mapped: {} \u2192 confidence treated as 100%{}", mapped,
-                    forceGenerate ? " (forceGenerate)" : "");
-            return generateWithFallback(text, mapped, 100, seed, null);
+            String normalizedText = text.trim();
+            logger.info("Explicit diagram type mapped: {} → confidence treated as 100%{} | normalized text (first 100 chars): '{}'",
+                    mapped,
+                    forceGenerate ? " (forceGenerate)" : "",
+                    normalizedText.substring(0, Math.min(100, normalizedText.length())));
+            return generateWithFallback(normalizedText, mapped, 100, seed, null);
         }
 
         // For auto-detect mode, require meaningful text
@@ -247,7 +471,7 @@ public class ConfidenceDiagramServiceImpl implements ConfidenceDiagramService {
             logger.warn("Template rendering failed: {}", e.getMessage());
         }
 
-        Diagram diagram = new Diagram("", diagramType, plantUmlCode);
+        Diagram diagram = new Diagram("Default template for " + diagramType.getDisplayName(), diagramType, plantUmlCode);
         diagram.setModelUsed(aiModelService.getModelName());
         diagram = diagramRepository.save(diagram);
         logger.info("Saved template diagram with ID: {}", diagram.getId());
@@ -284,8 +508,8 @@ public class ConfidenceDiagramServiceImpl implements ConfidenceDiagramService {
     private GenerationResult generateDiagram(String text, DiagramType diagramType,
                                              int confidence, Long seed,
                                              DiagramSuggestion suggestion) {
-        // Step 1: Extract semantic model
-        SemanticModel semanticModel = extractionService.extract(text);
+        // Step 1: Extract semantic model (type-aware prompt)
+        SemanticModel semanticModel = extractionService.extract(text, diagramType);
         logger.info("Extracted semantic model: {} entities, {} relationships, {} actions",
                 semanticModel.getEntityCount(),
                 semanticModel.getRelationshipCount(),
@@ -299,16 +523,7 @@ public class ConfidenceDiagramServiceImpl implements ConfidenceDiagramService {
 
         // Step 3: Generate PlantUML code
         logger.info("Dispatching generation for diagram type: {}", diagramType);
-        String plantUmlCode = switch (diagramType) {
-            case CLASS -> generationService.generate(semanticModel, styleProfile, seed);
-            case SEQUENCE -> generationService.generate(semanticModel, styleProfile, seed);
-            case ER -> generationService.generate(semanticModel, styleProfile, seed);
-            case COMPONENT -> generationService.generate(semanticModel, styleProfile, seed);
-            case DEPLOYMENT -> generationService.generate(semanticModel, styleProfile, seed);
-            case USE_CASE -> generationService.generate(semanticModel, styleProfile, seed);
-            default -> throw new UnsupportedOperationException(
-                    "Diagram type not implemented: " + diagramType);
-        };
+        String plantUmlCode = generationService.generate(semanticModel, styleProfile, seed);
 
         if (plantUmlCode == null || plantUmlCode.isBlank()) {
             logger.error("Generation returned null/empty PlantUML for type: {}", diagramType);

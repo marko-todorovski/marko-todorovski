@@ -1,8 +1,13 @@
 package com.example.aidiagramgenerator.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -10,7 +15,13 @@ import java.util.UUID;
  * Stores the input text, classified diagram type, and generated PlantUML code.
  */
 @Entity(name = "DomainDiagram")
-@Table(name = "domain_diagrams")
+@Table(
+        name = "domain_diagrams",
+        indexes = {
+                @Index(name = "idx_domain_diagrams_project_id", columnList = "project_id"),
+                @Index(name = "idx_domain_diagrams_owner_id", columnList = "owner_id")
+        }
+)
 public class Diagram {
 
     @Id
@@ -34,6 +45,48 @@ public class Diagram {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id")
+    private Project project;
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private ApplicationUser owner;
+
+    @Size(max = 150)
+    @Column(length = 150)
+    private String name;
+
+    @Size(max = 1000)
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_format", length = 32)
+    private DiagramSourceFormat sourceFormat = DiagramSourceFormat.PLANTUML;
+
+    @Column(name = "original_prompt", columnDefinition = "TEXT")
+    private String originalPrompt;
+
+    @Column(name = "current_source_code", columnDefinition = "TEXT")
+    private String currentSourceCode;
+
+    @Column(name = "current_version_number")
+    private Integer currentVersionNumber = 1;
+
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
+    @Version
+    @Column
+    private Long lockVersion;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "diagram", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
+    private Set<DiagramVersion> versions = new LinkedHashSet<>();
+
     /**
      * Default constructor required by JPA.
      */
@@ -56,11 +109,44 @@ public class Diagram {
         this.inputText = inputText;
         this.diagramType = diagramType;
         this.plantUmlCode = plantUmlCode;
+        this.sourceFormat = DiagramSourceFormat.PLANTUML;
+        this.originalPrompt = inputText;
+        this.currentSourceCode = plantUmlCode;
+        this.currentVersionNumber = 1;
     }
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        normalizeNewFields();
+        this.updatedAt = Instant.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        normalizeNewFields();
+        this.updatedAt = Instant.now();
+    }
+
+    private void normalizeNewFields() {
+        if (sourceFormat == null) {
+            sourceFormat = DiagramSourceFormat.PLANTUML;
+        }
+        if (currentVersionNumber == null) {
+            currentVersionNumber = 1;
+        }
+        if (currentSourceCode == null || currentSourceCode.isBlank()) {
+            currentSourceCode = plantUmlCode;
+        }
+        if (originalPrompt == null || originalPrompt.isBlank()) {
+            originalPrompt = inputText;
+        }
+        if (name != null) {
+            name = name.trim();
+        }
+        if (description != null) {
+            description = description.trim();
+        }
     }
 
     // Validation methods
@@ -113,6 +199,82 @@ public class Diagram {
         return createdAt;
     }
 
+    public Project getProject() {
+        return project;
+    }
+
+    public void setProject(Project project) {
+        this.project = project;
+    }
+
+    public ApplicationUser getOwner() {
+        return owner;
+    }
+
+    public void setOwner(ApplicationUser owner) {
+        this.owner = owner;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name == null ? null : name.trim();
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public DiagramSourceFormat getSourceFormat() {
+        return sourceFormat;
+    }
+
+    public void setSourceFormat(DiagramSourceFormat sourceFormat) {
+        this.sourceFormat = sourceFormat == null ? DiagramSourceFormat.PLANTUML : sourceFormat;
+    }
+
+    public String getOriginalPrompt() {
+        return originalPrompt;
+    }
+
+    public void setOriginalPrompt(String originalPrompt) {
+        this.originalPrompt = originalPrompt;
+    }
+
+    public String getCurrentSourceCode() {
+        return currentSourceCode;
+    }
+
+    public void setCurrentSourceCode(String currentSourceCode) {
+        this.currentSourceCode = currentSourceCode;
+    }
+
+    public Integer getCurrentVersionNumber() {
+        return currentVersionNumber;
+    }
+
+    public void setCurrentVersionNumber(Integer currentVersionNumber) {
+        this.currentVersionNumber = currentVersionNumber;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public Long getLockVersion() {
+        return lockVersion;
+    }
+
+    public Set<DiagramVersion> getVersions() {
+        return versions;
+    }
+
     // Setters with validation
 
     public void setInputText(String inputText) {
@@ -128,6 +290,9 @@ public class Diagram {
     public void setPlantUmlCode(String plantUmlCode) {
         validatePlantUmlCode(plantUmlCode);
         this.plantUmlCode = plantUmlCode;
+        if (currentSourceCode == null) {
+            this.currentSourceCode = plantUmlCode;
+        }
     }
 
     @Override

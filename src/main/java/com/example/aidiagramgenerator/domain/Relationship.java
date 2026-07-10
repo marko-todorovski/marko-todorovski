@@ -11,6 +11,8 @@ public final class Relationship {
     private final String source;
     private final String target;
     private final String type;
+    private final String srcMultiplicity;
+    private final String tgtMultiplicity;
 
     /**
      * Creates a new Relationship with the specified source, target, and type.
@@ -21,13 +23,29 @@ public final class Relationship {
      * @throws IllegalArgumentException if source, target, or type is null or blank
      */
     public Relationship(String source, String target, String type) {
+        this(source, target, type, null, null);
+    }
+
+    /**
+     * Creates a new Relationship with multiplicity decorators.
+     *
+     * @param source          the source entity name
+     * @param target          the target entity name
+     * @param type            the relationship type
+     * @param srcMultiplicity UML multiplicity on the source end (e.g. "1", "0..*"), or null
+     * @param tgtMultiplicity UML multiplicity on the target end (e.g. "0..*", "1"), or null
+     */
+    public Relationship(String source, String target, String type,
+                        String srcMultiplicity, String tgtMultiplicity) {
         validateSource(source);
         validateTarget(target);
         validateType(type);
-        
+
         this.source = source.trim();
         this.target = target.trim();
         this.type = type.trim();
+        this.srcMultiplicity = srcMultiplicity;
+        this.tgtMultiplicity = tgtMultiplicity;
     }
 
     private void validateSource(String source) {
@@ -75,6 +93,14 @@ public final class Relationship {
         return type;
     }
 
+    public String getSrcMultiplicity() {
+        return srcMultiplicity;
+    }
+
+    public String getTgtMultiplicity() {
+        return tgtMultiplicity;
+    }
+
     /**
      * Checks if this relationship connects the given entities (in either direction).
      *
@@ -103,7 +129,7 @@ public final class Relationship {
      * @return a new Relationship with swapped source and target
      */
     public Relationship reverse() {
-        return new Relationship(target, source, type);
+        return new Relationship(target, source, type, tgtMultiplicity, srcMultiplicity);
     }
 
     @Override
@@ -123,10 +149,15 @@ public final class Relationship {
 
     @Override
     public String toString() {
+        String mult = (srcMultiplicity != null || tgtMultiplicity != null)
+                ? " [" + (srcMultiplicity != null ? srcMultiplicity : "") + ".."
+                  + (tgtMultiplicity != null ? tgtMultiplicity : "") + "]"
+                : "";
         return "Relationship{" +
                 "source='" + source + '\'' +
                 ", target='" + target + '\'' +
                 ", type='" + type + '\'' +
+                mult +
                 '}';
     }
 }

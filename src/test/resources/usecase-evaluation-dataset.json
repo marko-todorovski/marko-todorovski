@@ -1,0 +1,22 @@
+[
+  {
+    "title": "University Course Registration System",
+    "text": "Create a use case diagram for a university course registration system. Actors include Student, Professor, Registrar, and Billing System. The Student can log in, search course catalog, register for course, drop course, view schedule, and pay tuition. The Professor can log in, view class roster, submit grades, and manage course materials. The Registrar can create course, update course offering, assign professor, and approve enrollment override. The Billing System participates when the Student pays tuition. The use case register for course includes check prerequisites and check seat availability. Pay tuition includes process payment. Approve enrollment override extends register for course when prerequisites are not satisfied or the course is full.",
+    "expectedType": "USE_CASE"
+  },
+  {
+    "title": "FAQ Management System",
+    "text": "Create a use case diagram for an FAQ management system. Actors include Visitor, Registered User, Moderator, Administrator, and Search Engine. The Visitor can browse FAQ categories, search FAQs, view FAQ answer, and submit question. The Registered User can rate answer, comment on answer, and subscribe to FAQ updates. The Moderator can review submitted question, create FAQ entry, edit FAQ entry, approve comment, and reject comment. The Administrator can manage FAQ categories, manage users, and publish FAQ entry. The Search Engine indexes published FAQs. Search FAQs includes enter keyword and filter by category. Create FAQ entry includes write answer and assign category. Submit question may extend create FAQ entry when the question is accepted as reusable content. Reject comment extends approve comment when the comment violates moderation rules.",
+    "expectedType": "USE_CASE"
+  },
+  {
+    "title": "Education System",
+    "text": "Create a use case diagram for an education system. Actors include Student, Teacher, Parent, Administrator, and Payment Gateway. The Student can enroll in course, attend online class, submit assignment, take quiz, view grades, and download certificate. The Teacher can create course, upload lesson, schedule class, create assignment, grade submission, and send feedback. The Parent can view child progress and receive notifications. The Administrator can manage students, manage teachers, manage courses, and generate reports. The Payment Gateway participates in pay course fee. Enroll in course includes pay course fee and verify enrollment eligibility. Attend online class includes authenticate user. Grade submission includes review assignment. Download certificate extends view grades when the student has passed the course. Receive notifications extends send feedback when progress changes are important.",
+    "expectedType": "USE_CASE"
+  },
+  {
+    "title": "ATM System",
+    "text": "Create a use case diagram for an ATM system. Actors include Bank Customer, Bank Server, Maintenance Technician, and Cash Dispenser. The Bank Customer can insert card, authenticate PIN, withdraw cash, deposit cash, check balance, transfer funds, print receipt, and eject card. The Bank Server validates card, verifies PIN, checks account balance, debits account, credits account, and records transaction. The Maintenance Technician can refill cash, run diagnostics, and collect deposits. The Cash Dispenser participates in dispense cash. Withdraw cash includes authenticate PIN, check account balance, debit account, dispense cash, and record transaction. Deposit cash includes authenticate PIN, credit account, and record transaction. Transfer funds includes authenticate PIN, check account balance, debit source account, credit destination account, and record transaction. Print receipt extends withdraw cash, deposit cash, check balance, and transfer funds when the customer requests a receipt. Eject card extends authenticate PIN after three failed attempts.",
+    "expectedType": "USE_CASE"
+  }
+]
