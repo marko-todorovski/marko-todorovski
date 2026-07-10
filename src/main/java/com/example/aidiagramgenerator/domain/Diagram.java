@@ -74,7 +74,7 @@ public class Diagram {
     private String currentSourceCode;
 
     @Column(name = "current_version_number")
-    private Integer currentVersionNumber = 1;
+    private Integer currentVersionNumber;
 
     @Column(name = "updated_at")
     private Instant updatedAt;
@@ -112,7 +112,6 @@ public class Diagram {
         this.sourceFormat = DiagramSourceFormat.PLANTUML;
         this.originalPrompt = inputText;
         this.currentSourceCode = plantUmlCode;
-        this.currentVersionNumber = 1;
     }
 
     @PrePersist
@@ -131,9 +130,6 @@ public class Diagram {
     private void normalizeNewFields() {
         if (sourceFormat == null) {
             sourceFormat = DiagramSourceFormat.PLANTUML;
-        }
-        if (currentVersionNumber == null) {
-            currentVersionNumber = 1;
         }
         if (currentSourceCode == null || currentSourceCode.isBlank()) {
             currentSourceCode = plantUmlCode;

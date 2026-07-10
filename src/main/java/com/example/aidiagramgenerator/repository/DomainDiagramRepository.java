@@ -74,6 +74,8 @@ public interface DomainDiagramRepository extends JpaRepository<Diagram, UUID> {
 
     List<Diagram> findAllByProjectIdAndOwnerIdOrderByUpdatedAtDesc(UUID projectId, UUID ownerId);
 
+    boolean existsByProjectIdAndOwnerId(UUID projectId, UUID ownerId);
+
     Optional<Diagram> findByIdAndOwnerId(UUID diagramId, UUID ownerId);
 
     Optional<Diagram> findByIdAndProjectIdAndOwnerId(UUID diagramId, UUID projectId, UUID ownerId);
