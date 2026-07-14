@@ -174,6 +174,21 @@
         .diagram-list { display: grid; gap: 0.85rem; }
         .source-panel { background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 1rem; overflow: auto; max-height: 440px; }
         .source-panel pre { white-space: pre-wrap; word-break: break-word; color: #cbd5e1; font-family: 'SF Mono', Monaco, monospace; font-size: 0.82rem; line-height: 1.55; }
+        .editor-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr); gap: 1rem; align-items: start; }
+        .editor-textarea { min-height: 430px; font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 0.82rem; line-height: 1.55; white-space: pre; overflow: auto; tab-size: 4; resize: vertical; }
+        .prompt-textarea { min-height: 90px; }
+        .editor-status { min-height: 1.35rem; color: #94a3b8; font-size: 0.82rem; }
+        .dirty-badge { background: #713f12; border: 1px solid #a16207; color: #fde68a; border-radius: 999px; padding: 0.2rem 0.55rem; font-size: 0.72rem; font-weight: 700; }
+        .preview-panel { min-height: 430px; background: #fff; border-radius: 8px; border: 1px solid #334155; padding: 1rem; display: flex; align-items: center; justify-content: center; overflow: auto; }
+        .preview-panel img { max-width: 100%; height: auto; }
+        .preview-empty { color: #64748b; text-align: center; line-height: 1.5; }
+        .history-list { display: grid; gap: 0.6rem; }
+        .history-item { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 0.8rem; display: grid; gap: 0.55rem; }
+        .history-item.current { border-color: #16a34a; }
+        .history-topline { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+        .history-version { color: #f8fafc; font-weight: 800; }
+        .history-meta { color: #94a3b8; font-size: 0.78rem; display: flex; flex-wrap: wrap; gap: 0.45rem; }
+        .version-code { background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 1rem; white-space: pre-wrap; overflow: auto; max-height: 320px; color: #cbd5e1; font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 0.82rem; line-height: 1.55; }
         .details-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; }
         .detail-item { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 0.75rem; }
         .detail-label { display: block; color: #64748b; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.25rem; }
@@ -191,6 +206,8 @@
             .row, .toolbar, .download-actions { align-items: stretch; flex-direction: column; }
             .row > *, .toolbar-actions button, .download-actions button { width: 100%; }
             .split-grid { grid-template-columns: 1fr; }
+            .editor-layout { grid-template-columns: 1fr; }
+            .editor-textarea, .preview-panel { min-height: 320px; }
             .project-grid { grid-template-columns: 1fr; }
         }
     </style>
@@ -198,7 +215,7 @@
 <body>
     <div id="root"></div>
     <script type="text/babel" data-presets="env,react">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useCallback } = React;
 
         mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
 
@@ -475,6 +492,13 @@
                 return text ? { message: text } : null;
             }
 
+            async function parseErrorResponse(res) {
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) return await res.json();
+                const text = await res.text();
+                return text ? { message: text } : null;
+            }
+
             function buildError(res, body) {
                 const err = new Error((body && body.message) || (res.status === 401 ? 'Authentication required' : `HTTP ${res.status}`));
                 err.status = res.status;
@@ -516,6 +540,25 @@
                 return data;
             }
 
+            async function apiFetchBlob(url, options = {}) {
+                const method = (options.method || 'GET').toUpperCase();
+                const headers = new Headers(options.headers || {});
+                headers.set('Accept', options.accept || 'image/svg+xml');
+                let body = options.body;
+                const isJsonBody = body && !(body instanceof FormData) && typeof body !== 'string';
+                if (isJsonBody) {
+                    headers.set('Content-Type', 'application/json');
+                    body = JSON.stringify(body);
+                }
+                if (mutationMethods.has(method)) {
+                    if (!csrf || !csrf.headerName || !csrf.token) await fetchCsrfToken();
+                    headers.set(csrf.headerName, csrf.token);
+                }
+                const res = await fetch(url, { ...options, method, body, headers, credentials: 'same-origin' });
+                if (!res.ok) throw buildError(res, await parseErrorResponse(res));
+                return await res.blob();
+            }
+
             async function refreshCsrfToken() {
                 csrf = null;
                 return fetchCsrfToken();
@@ -525,6 +568,7 @@
                 fetchCsrfToken,
                 refreshCsrfToken,
                 apiFetch,
+                apiFetchBlob,
                 registerUser: data => apiFetch('/api/auth/register', { method: 'POST', body: data }),
                 loginUser: data => apiFetch('/api/auth/login', { method: 'POST', body: data }),
                 logoutUser: () => apiFetch('/api/auth/logout', { method: 'POST' }),
@@ -538,7 +582,13 @@
                 saveDiagram: (projectId, data) => apiFetch(`/api/projects/${projectId}/diagrams`, { method: 'POST', body: data }),
                 attachDiagram: (projectId, diagramId, data) => apiFetch(`/api/projects/${projectId}/diagrams/${diagramId}/attach`, { method: 'POST', body: data }),
                 getDiagram: id => apiFetch(`/api/workspace/diagrams/${id}`),
+                updateDiagramMetadata: (id, data) => apiFetch(`/api/workspace/diagrams/${id}/metadata`, { method: 'PUT', body: data }),
                 deleteDiagram: id => apiFetch(`/api/workspace/diagrams/${id}`, { method: 'DELETE' }),
+                previewDiagram: sourceCode => apiFetchBlob('/api/workspace/preview', { method: 'POST', body: { sourceCode, outputFormat: 'SVG' }, accept: 'image/svg+xml' }),
+                listVersions: id => apiFetch(`/api/workspace/diagrams/${id}/versions`),
+                createVersion: (id, data) => apiFetch(`/api/workspace/diagrams/${id}/versions`, { method: 'POST', body: data }),
+                getVersion: (id, versionNumber) => apiFetch(`/api/workspace/diagrams/${id}/versions/${versionNumber}`),
+                restoreVersion: (id, versionNumber) => apiFetch(`/api/workspace/diagrams/${id}/versions/${versionNumber}/restore`, { method: 'POST' }),
             };
         })();
 
@@ -1039,17 +1089,60 @@
             );
         }
 
-        function DiagramDetailsView({ diagramId, projectId, go, notify, loadProjects }) {
+        function DiagramEditorView({ diagramId, projectId, go, notify, loadProjects, setNavigationGuard }) {
             const [diagram, setDiagram] = useState(null);
+            const [versions, setVersions] = useState([]);
+            const [editorSource, setEditorSource] = useState('');
+            const [originalSource, setOriginalSource] = useState('');
+            const [editorPrompt, setEditorPrompt] = useState('');
+            const [originalPrompt, setOriginalPrompt] = useState('');
+            const [previewUrl, setPreviewUrl] = useState(null);
+            const [previewStatus, setPreviewStatus] = useState('idle');
+            const [previewMessage, setPreviewMessage] = useState('');
+            const [saveStatus, setSaveStatus] = useState('idle');
+            const [saveMessage, setSaveMessage] = useState('');
+            const [selectedVersion, setSelectedVersion] = useState(null);
+            const [selectedVersionLoading, setSelectedVersionLoading] = useState(false);
+            const [editingMetadata, setEditingMetadata] = useState(false);
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
             const [confirmDelete, setConfirmDelete] = useState(false);
+            const [restoreTarget, setRestoreTarget] = useState(null);
+            const [restoreLoading, setRestoreLoading] = useState(false);
+            const previewUrlRef = useRef(null);
+            const previewRequestRef = useRef(0);
+
+            const isPlantUml = diagram?.sourceFormat === 'PLANTUML';
+            const dirty = editorSource !== originalSource || editorPrompt !== originalPrompt;
+
+            function discardMessage() {
+                return 'You have unsaved changes. Continue and discard them?';
+            }
+
+            function confirmDiscardIfDirty() {
+                return !dirty || window.confirm(discardMessage());
+            }
+
+            function revokePreviewUrl() {
+                if (previewUrlRef.current) {
+                    URL.revokeObjectURL(previewUrlRef.current);
+                    previewUrlRef.current = null;
+                }
+            }
 
             async function refresh() {
                 setLoading(true);
                 setError(null);
                 try {
-                    setDiagram(await AuthApi.getDiagram(diagramId));
+                    const loaded = await AuthApi.getDiagram(diagramId);
+                    setDiagram(loaded);
+                    const source = loaded.currentSourceCode || '';
+                    const prompt = loaded.originalPrompt || '';
+                    setEditorSource(source);
+                    setOriginalSource(source);
+                    setEditorPrompt(prompt);
+                    setOriginalPrompt(prompt);
+                    await refreshVersions();
                 } catch (e) {
                     setError(e.message || 'Diagram could not be loaded.');
                 } finally {
@@ -1057,11 +1150,75 @@
                 }
             }
 
+            async function refreshVersions() {
+                setVersions(await AuthApi.listVersions(diagramId));
+            }
+
             useEffect(() => { refresh(); }, [diagramId]);
 
+            useEffect(() => {
+                setNavigationGuard(() => dirty);
+                return () => setNavigationGuard(null);
+            }, [dirty, setNavigationGuard]);
+
+            useEffect(() => {
+                function beforeUnload(e) {
+                    if (!dirty) return;
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+                window.addEventListener('beforeunload', beforeUnload);
+                return () => window.removeEventListener('beforeunload', beforeUnload);
+            }, [dirty]);
+
+            useEffect(() => {
+                if (!isPlantUml) {
+                    setPreviewStatus('unsupported');
+                    setPreviewMessage('Live preview is available for PlantUML diagrams only.');
+                    return;
+                }
+                if (!editorSource.trim()) {
+                    revokePreviewUrl();
+                    setPreviewUrl(null);
+                    setPreviewStatus('idle');
+                    setPreviewMessage('Enter PlantUML source to preview.');
+                    return;
+                }
+                setPreviewStatus(previewUrl ? 'stale' : 'rendering');
+                setPreviewMessage(previewUrl ? 'Source changed. Refreshing preview...' : 'Rendering preview...');
+                const timer = window.setTimeout(() => renderPreview(editorSource), 650);
+                return () => window.clearTimeout(timer);
+            }, [editorSource, isPlantUml]);
+
+            useEffect(() => () => revokePreviewUrl(), []);
+
+            async function renderPreview(source = editorSource) {
+                if (!isPlantUml || !source.trim()) return;
+                const requestId = previewRequestRef.current + 1;
+                previewRequestRef.current = requestId;
+                setPreviewStatus('rendering');
+                setPreviewMessage('Rendering preview...');
+                try {
+                    const blob = await AuthApi.previewDiagram(source);
+                    if (requestId !== previewRequestRef.current) return;
+                    const nextUrl = URL.createObjectURL(blob);
+                    revokePreviewUrl();
+                    previewUrlRef.current = nextUrl;
+                    setPreviewUrl(nextUrl);
+                    setPreviewStatus('ready');
+                    setPreviewMessage('Preview updated.');
+                } catch (e) {
+                    if (requestId !== previewRequestRef.current) return;
+                    setPreviewStatus('error');
+                    setPreviewMessage(e.status === 401 ? 'Your session expired. Log in again to preview.' : (e.message || 'Preview could not be rendered.'));
+                }
+            }
+
             async function deleteDiagram() {
+                if (!confirmDiscardIfDirty()) return;
                 try {
                     await AuthApi.deleteDiagram(diagramId);
+                    revokePreviewUrl();
                     await loadProjects(true);
                     notify('success', 'Diagram deleted.');
                     go(projectId ? 'project' : 'dashboard', projectId ? { projectId } : {});
@@ -1070,44 +1227,260 @@
                 }
             }
 
+            async function saveVersion() {
+                if (!isPlantUml) return;
+                if (!editorSource.trim()) {
+                    setSaveStatus('error');
+                    setSaveMessage('Source code is required.');
+                    return;
+                }
+                setSaveStatus('saving');
+                setSaveMessage('');
+                try {
+                    const saved = await AuthApi.createVersion(diagramId, {
+                        prompt: editorPrompt,
+                        sourceCode: editorSource,
+                        sourceFormat: 'PLANTUML',
+                        changeType: 'EDITED',
+                        modelUsed: 'manual-editor',
+                    });
+                    if (!saved) {
+                        setSaveStatus('idle');
+                        setSaveMessage('No changes to save.');
+                        return;
+                    }
+                    const updatedDiagram = await AuthApi.getDiagram(diagramId);
+                    setDiagram(updatedDiagram);
+                    setOriginalSource(editorSource);
+                    setOriginalPrompt(editorPrompt);
+                    await refreshVersions();
+                    setSaveStatus('saved');
+                    setSaveMessage(`Saved version ${saved.versionNumber}.`);
+                    notify('success', `Saved version ${saved.versionNumber}.`);
+                } catch (e) {
+                    setSaveStatus('error');
+                    setSaveMessage(e.status === 409 ? 'Version could not be saved. Refresh and try again.' : (e.message || 'Version could not be saved.'));
+                }
+            }
+
+            function resetChanges() {
+                if (!dirty || window.confirm('Reset unsaved source and prompt changes?')) {
+                    setEditorSource(originalSource);
+                    setEditorPrompt(originalPrompt);
+                    setSaveMessage('');
+                }
+            }
+
+            function handleSourceKeyDown(e) {
+                if (e.key !== 'Tab') return;
+                e.preventDefault();
+                const el = e.currentTarget;
+                const start = el.selectionStart;
+                const end = el.selectionEnd;
+                const next = editorSource.slice(0, start) + '    ' + editorSource.slice(end);
+                setEditorSource(next);
+                window.requestAnimationFrame(() => {
+                    el.selectionStart = el.selectionEnd = start + 4;
+                });
+            }
+
+            async function openVersion(versionNumber) {
+                setSelectedVersionLoading(true);
+                try {
+                    setSelectedVersion(await AuthApi.getVersion(diagramId, versionNumber));
+                } catch (e) {
+                    notify('error', e.message || 'Version could not be loaded.');
+                } finally {
+                    setSelectedVersionLoading(false);
+                }
+            }
+
+            function loadVersionIntoEditor(version) {
+                if (!confirmDiscardIfDirty()) return;
+                setEditorSource(version.sourceCode || '');
+                setEditorPrompt(version.prompt || '');
+                setSelectedVersion(null);
+                notify('info', 'Version loaded into editor. Save to create new version.');
+            }
+
+            async function restoreVersion(versionNumber) {
+                if (!confirmDiscardIfDirty()) return;
+                setRestoreLoading(true);
+                try {
+                    const restored = await AuthApi.restoreVersion(diagramId, versionNumber);
+                    const updatedDiagram = await AuthApi.getDiagram(diagramId);
+                    const source = updatedDiagram.currentSourceCode || '';
+                    const prompt = updatedDiagram.originalPrompt || '';
+                    setDiagram(updatedDiagram);
+                    setEditorSource(source);
+                    setOriginalSource(source);
+                    setEditorPrompt(prompt);
+                    setOriginalPrompt(prompt);
+                    await refreshVersions();
+                    setSelectedVersion(null);
+                    setRestoreTarget(null);
+                    notify('success', `Restored as version ${restored.versionNumber}.`);
+                } catch (e) {
+                    notify('error', e.message || 'Version could not be restored.');
+                } finally {
+                    setRestoreLoading(false);
+                }
+            }
+
+            async function updateMetadata(data) {
+                try {
+                    const updated = await AuthApi.updateDiagramMetadata(diagramId, data);
+                    setDiagram(updated);
+                    setEditingMetadata(false);
+                    await loadProjects(true);
+                    notify('success', 'Diagram metadata updated.');
+                } catch (e) {
+                    notify('error', e.message || 'Metadata could not be updated.');
+                }
+            }
+
+            function backToProject() {
+                go(diagram?.projectId ? 'project' : 'dashboard', diagram?.projectId ? { projectId: diagram.projectId } : {});
+            }
+
             if (loading && !diagram) return <div className="loading-line">Loading diagram...</div>;
             if (error) return <div className="notice error">{error} <button className="link-button" onClick={refresh}>Retry</button></div>;
             if (!diagram) return null;
 
             return (
                 <div className="stack">
-                    <button className="btn-secondary" onClick={() => go(diagram.projectId ? 'project' : 'dashboard', diagram.projectId ? { projectId: diagram.projectId } : {})}>
+                    <button className="btn-secondary" onClick={backToProject}>
                         Back to project
                     </button>
                     <div className="toolbar">
                         <div>
-                            <h1>{diagram.name}</h1>
+                            <h1>{diagram.name} {dirty && <span className="dirty-badge">Unsaved</span>}</h1>
                             <p className="subtitle">{diagram.description || 'No description'}</p>
                         </div>
-                        <button className="btn-danger" onClick={() => setConfirmDelete(true)}>Delete Diagram</button>
+                        <div className="toolbar-actions">
+                            <button className="btn-secondary" onClick={() => setEditingMetadata(true)}>Edit Metadata</button>
+                            <button className="btn-danger" onClick={() => setConfirmDelete(true)}>Delete Diagram</button>
+                        </div>
                     </div>
-                    <div className="split-grid">
+                    <section className="panel stack">
+                        <div className="details-list">
+                            <div className="detail-item"><span className="detail-label">Type</span><span className="detail-value">{diagram.diagramType}</span></div>
+                            <div className="detail-item"><span className="detail-label">Format</span><span className="detail-value">{diagram.sourceFormat}</span></div>
+                            <div className="detail-item"><span className="detail-label">Version</span><span className="detail-value">v{diagram.currentVersionNumber}</span></div>
+                            <div className="detail-item"><span className="detail-label">Model</span><span className="detail-value">{diagram.modelUsed || 'No model'}</span></div>
+                            <div className="detail-item"><span className="detail-label">Created</span><span className="detail-value">{formatDate(diagram.createdAt)}</span></div>
+                            <div className="detail-item"><span className="detail-label">Updated</span><span className="detail-value">{formatDate(diagram.updatedAt)}</span></div>
+                        </div>
+                    </section>
+                    {!isPlantUml && (
+                        <div className="notice info">Editing and live preview are currently available for PlantUML diagrams only. This diagram remains read-only.</div>
+                    )}
+                    {isPlantUml ? (
+                        <div className="editor-layout">
+                            <section className="panel stack">
+                                <div>
+                                    <label htmlFor="version-prompt">Version prompt</label>
+                                    <textarea id="version-prompt" className="prompt-textarea" value={editorPrompt} onChange={e => setEditorPrompt(e.target.value)} spellCheck="false" />
+                                </div>
+                                <div>
+                                    <label htmlFor="source-editor">PlantUML source</label>
+                                    <textarea id="source-editor" className="editor-textarea" value={editorSource} onChange={e => setEditorSource(e.target.value)} onKeyDown={handleSourceKeyDown} spellCheck="false" />
+                                </div>
+                                <div className="toolbar-actions">
+                                    <button className="btn-success" onClick={saveVersion} disabled={saveStatus === 'saving' || !editorSource.trim()}>{saveStatus === 'saving' ? 'Saving...' : 'Save Version'}</button>
+                                    <button className="btn-secondary" onClick={resetChanges} disabled={!dirty || saveStatus === 'saving'}>Reset Changes</button>
+                                    <button className="btn-secondary" onClick={() => renderPreview(editorSource)} disabled={previewStatus === 'rendering'}>{previewStatus === 'rendering' ? 'Rendering...' : 'Refresh Preview'}</button>
+                                </div>
+                                <div className="editor-status" aria-live="polite">{saveMessage}</div>
+                            </section>
+                            <section className="panel stack">
+                                <div className="toolbar" style={{marginBottom: 0}}>
+                                    <h2>Live preview</h2>
+                                    <span className={`badge ${previewStatus === 'error' ? 'error' : ''}`}>{previewStatus}</span>
+                                </div>
+                                <div className="preview-panel" aria-live="polite">
+                                    {previewUrl ? <img src={previewUrl} alt="Rendered PlantUML preview" /> : <div className="preview-empty">Preview will appear here.</div>}
+                                </div>
+                                {previewMessage && <div className={previewStatus === 'error' ? 'notice error' : 'editor-status'}>{previewMessage}</div>}
+                            </section>
+                        </div>
+                    ) : (
                         <section className="panel stack">
-                            <div className="details-list">
-                                <div className="detail-item"><span className="detail-label">Type</span><span className="detail-value">{diagram.diagramType}</span></div>
-                                <div className="detail-item"><span className="detail-label">Format</span><span className="detail-value">{diagram.sourceFormat}</span></div>
-                                <div className="detail-item"><span className="detail-label">Version</span><span className="detail-value">v{diagram.currentVersionNumber}</span></div>
-                                <div className="detail-item"><span className="detail-label">Model</span><span className="detail-value">{diagram.modelUsed || 'No model'}</span></div>
-                                <div className="detail-item"><span className="detail-label">Created</span><span className="detail-value">{formatDate(diagram.createdAt)}</span></div>
-                                <div className="detail-item"><span className="detail-label">Updated</span><span className="detail-value">{formatDate(diagram.updatedAt)}</span></div>
-                            </div>
-                            <div>
-                                <span className="detail-label">Original prompt</span>
-                                <p className="muted">{diagram.originalPrompt || 'No prompt stored.'}</p>
-                            </div>
-                        </section>
-                        <section className="panel">
                             <h2>Current source</h2>
-                            <div className="source-panel" style={{marginTop: '0.75rem'}}>
+                            <div className="source-panel">
                                 <pre>{diagram.currentSourceCode || 'No source code stored.'}</pre>
                             </div>
                         </section>
-                    </div>
+                    )}
+                    <section className="panel stack">
+                        <div className="toolbar" style={{marginBottom: 0}}>
+                            <h2>Version History</h2>
+                            <button className="btn-secondary" onClick={refreshVersions}>Refresh</button>
+                        </div>
+                        {versions.length === 0 ? <p className="muted">No versions saved yet.</p> : (
+                            <div className="history-list">
+                                {versions.map(version => (
+                                    <article key={version.versionNumber} className={`history-item ${version.versionNumber === diagram.currentVersionNumber ? 'current' : ''}`}>
+                                        <div className="history-topline">
+                                            <span className="history-version">Version {version.versionNumber}</span>
+                                            {version.versionNumber === diagram.currentVersionNumber && <span className="dirty-badge">Current</span>}
+                                        </div>
+                                        <div className="history-meta">
+                                            <span>{version.changeType}</span>
+                                            <span>{version.sourceFormat}</span>
+                                            <span>{version.modelUsed || 'No model'}</span>
+                                            <span>{formatDate(version.createdAt)}</span>
+                                        </div>
+                                        <div className="toolbar-actions">
+                                            <button className="btn-secondary" onClick={() => openVersion(version.versionNumber)} disabled={selectedVersionLoading}>View</button>
+                                            {version.versionNumber !== diagram.currentVersionNumber && <button onClick={() => setRestoreTarget(version)}>Restore</button>}
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                    {editingMetadata && (
+                        <Modal title="Edit diagram metadata" onClose={() => setEditingMetadata(false)}>
+                            <ProjectForm initialProject={diagram} submitLabel="Save Metadata" onSubmit={updateMetadata} onCancel={() => setEditingMetadata(false)} />
+                        </Modal>
+                    )}
+                    {selectedVersion && (
+                        <Modal title={`Version ${selectedVersion.versionNumber}`} onClose={() => setSelectedVersion(null)}>
+                            <div className="stack">
+                                <div className="details-list">
+                                    <div className="detail-item"><span className="detail-label">Change</span><span className="detail-value">{selectedVersion.changeType}</span></div>
+                                    <div className="detail-item"><span className="detail-label">Format</span><span className="detail-value">{selectedVersion.sourceFormat}</span></div>
+                                    <div className="detail-item"><span className="detail-label">Model</span><span className="detail-value">{selectedVersion.modelUsed || 'No model'}</span></div>
+                                    <div className="detail-item"><span className="detail-label">Created</span><span className="detail-value">{formatDate(selectedVersion.createdAt)}</span></div>
+                                </div>
+                                <div>
+                                    <span className="detail-label">Prompt</span>
+                                    <p className="muted">{selectedVersion.prompt || 'No prompt stored.'}</p>
+                                </div>
+                                <div>
+                                    <span className="detail-label">Source code</span>
+                                    <pre className="version-code">{selectedVersion.sourceCode}</pre>
+                                </div>
+                                <div className="toolbar-actions">
+                                    {selectedVersion.sourceFormat === 'PLANTUML' && <button onClick={() => loadVersionIntoEditor(selectedVersion)}>Load into Editor</button>}
+                                    {selectedVersion.versionNumber !== diagram.currentVersionNumber && <button className="btn-secondary" onClick={() => setRestoreTarget(selectedVersion)}>Restore This Version</button>}
+                                    <button className="btn-secondary" onClick={() => setSelectedVersion(null)}>Close</button>
+                                </div>
+                            </div>
+                        </Modal>
+                    )}
+                    {restoreTarget && (
+                        <Modal title={`Restore version ${restoreTarget.versionNumber}`} onClose={() => setRestoreTarget(null)}>
+                            <div className="stack">
+                                <p className="muted">Restore does not delete newer versions. It creates a new version from this historical source.</p>
+                                <div className="toolbar-actions">
+                                    <button onClick={() => restoreVersion(restoreTarget.versionNumber)} disabled={restoreLoading}>{restoreLoading ? 'Restoring...' : 'Restore Version'}</button>
+                                    <button className="btn-secondary" onClick={() => setRestoreTarget(null)} disabled={restoreLoading}>Cancel</button>
+                                </div>
+                            </div>
+                        </Modal>
+                    )}
                     {confirmDelete && (
                         <Modal title="Delete diagram" onClose={() => setConfirmDelete(false)}>
                             <div className="stack">
@@ -1557,15 +1930,29 @@
             const [currentView, setCurrentView] = useState(viewFromHash());
             const [projects, setProjects] = useState([]);
             const [notice, setNotice] = useState(null);
+            const navigationGuardRef = useRef(null);
 
             function notify(type, message) {
                 setNotice({ type, message });
             }
 
+            function hasPendingNavigationGuard() {
+                const guardDirty = navigationGuardRef.current && navigationGuardRef.current();
+                const visibleEditorDirty = Boolean(document.querySelector('h1 .dirty-badge'));
+                return guardDirty || visibleEditorDirty;
+            }
+
             function go(name, params = {}) {
+                if (hasPendingNavigationGuard()) {
+                    if (!window.confirm('You have unsaved changes. Continue and discard them?')) return;
+                }
                 window.location.hash = hashFor(name, params);
                 setCurrentView(viewFromHash());
             }
+
+            const setNavigationGuard = useCallback((guard) => {
+                navigationGuardRef.current = guard;
+            }, []);
 
             function clearWorkspace() {
                 setProjects([]);
@@ -1617,6 +2004,9 @@
             }, []);
 
             async function logout() {
+                if (hasPendingNavigationGuard()) {
+                    if (!window.confirm('You have unsaved changes. Continue and discard them?')) return;
+                }
                 try {
                     await AuthApi.logoutUser();
                 } catch (e) {
@@ -1647,7 +2037,7 @@
             } else if (currentView.name === 'project') {
                 content = requireAuth(<ProjectDetailsView projectId={currentView.projectId} go={go} notify={notify} loadProjects={loadProjects} />);
             } else if (currentView.name === 'diagram') {
-                content = requireAuth(<DiagramDetailsView diagramId={currentView.diagramId} projectId={currentView.projectId} go={go} notify={notify} loadProjects={loadProjects} />);
+                content = requireAuth(<DiagramEditorView diagramId={currentView.diagramId} projectId={currentView.projectId} go={go} notify={notify} loadProjects={loadProjects} setNavigationGuard={setNavigationGuard} />);
             } else {
                 content = <GeneratorView currentUser={currentUser} projects={projects} loadProjects={loadProjects} go={go} notify={notify} />;
             }

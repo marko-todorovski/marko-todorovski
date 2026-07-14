@@ -178,7 +178,7 @@ class Stage7FrontendContractTest {
                 .contains("RegisterView")
                 .contains("DashboardView")
                 .contains("ProjectDetailsView")
-                .contains("DiagramDetailsView")
+                .contains("DiagramEditorView")
                 .doesNotContain("localStorage")
                 .doesNotContain("sessionStorage")
                 .doesNotContain("ownerId")
