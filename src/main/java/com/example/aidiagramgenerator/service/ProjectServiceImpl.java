@@ -13,7 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ProjectServiceImpl implements ProjectService {
@@ -61,6 +63,26 @@ public class ProjectServiceImpl implements ProjectService {
             throw new UserNotFoundException("User not found: " + ownerId);
         }
         return projectRepository.findAllByOwnerIdOrderByUpdatedAtDesc(requiredOwnerId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countProjectDiagrams(UUID projectId, UUID ownerId) {
+        getProjectForOwner(projectId, ownerId);
+        return diagramRepository.countByProjectIdAndOwnerId(projectId, ownerId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, Long> countProjectDiagramsForOwner(UUID ownerId) {
+        UUID requiredOwnerId = requireId(ownerId, "Owner ID");
+        if (!userRepository.existsById(requiredOwnerId)) {
+            throw new UserNotFoundException("User not found: " + ownerId);
+        }
+        return diagramRepository.countDiagramsByProjectForOwner(requiredOwnerId).stream()
+                .collect(Collectors.toMap(
+                        DomainDiagramRepository.ProjectDiagramCount::getProjectId,
+                        DomainDiagramRepository.ProjectDiagramCount::getDiagramCount));
     }
 
     @Override

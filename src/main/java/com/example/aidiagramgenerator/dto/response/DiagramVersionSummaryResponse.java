@@ -1,0 +1,24 @@
+package com.example.aidiagramgenerator.dto.response;
+
+import com.example.aidiagramgenerator.domain.DiagramChangeType;
+import com.example.aidiagramgenerator.domain.DiagramSourceFormat;
+import com.example.aidiagramgenerator.domain.DiagramVersion;
+
+import java.time.Instant;
+
+public record DiagramVersionSummaryResponse(
+        int versionNumber,
+        DiagramSourceFormat sourceFormat,
+        DiagramChangeType changeType,
+        String modelUsed,
+        Instant createdAt
+) {
+    public static DiagramVersionSummaryResponse from(DiagramVersion version) {
+        return new DiagramVersionSummaryResponse(
+                version.getVersionNumber(),
+                version.getSourceFormat(),
+                version.getChangeType(),
+                version.getModelUsed(),
+                version.getCreatedAt());
+    }
+}

@@ -1,5 +1,7 @@
 package com.example.aidiagramgenerator.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+
 /**
  * Enumeration of supported software engineering diagram types.
  * Each type corresponds to a specific UML or architectural diagram category.
@@ -53,12 +55,20 @@ public enum DiagramType {
             throw new IllegalArgumentException("Diagram type code cannot be null or blank");
         }
         for (DiagramType type : values()) {
-            if (type.code.equalsIgnoreCase(code.trim())) {
+            String normalized = code.trim();
+            if (type.name().equalsIgnoreCase(normalized)
+                    || type.code.equalsIgnoreCase(normalized)
+                    || type.displayName.equalsIgnoreCase(normalized)) {
                 return type;
             }
         }
         throw new IllegalArgumentException("Unknown diagram type code: " + code + ". Accepted codes: " +
                 java.util.Arrays.stream(values()).map(DiagramType::getCode).collect(java.util.stream.Collectors.joining(", ")));
+    }
+
+    @JsonCreator
+    public static DiagramType fromJson(String value) {
+        return fromCode(value);
     }
 
     @Override

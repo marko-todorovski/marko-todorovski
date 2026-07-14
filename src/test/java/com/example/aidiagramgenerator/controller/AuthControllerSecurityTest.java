@@ -3,6 +3,9 @@ package com.example.aidiagramgenerator.controller;
 import com.example.aidiagramgenerator.AiDiagramGeneratorApplication;
 import com.example.aidiagramgenerator.domain.ApplicationUser;
 import com.example.aidiagramgenerator.repository.ApplicationUserRepository;
+import com.example.aidiagramgenerator.repository.DiagramVersionRepository;
+import com.example.aidiagramgenerator.repository.DomainDiagramRepository;
+import com.example.aidiagramgenerator.repository.ProjectRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +48,15 @@ class AuthControllerSecurityTest {
     private ApplicationUserRepository userRepository;
 
     @Autowired
+    private ProjectRepository projectRepository;
+
+    @Autowired
+    private DomainDiagramRepository diagramRepository;
+
+    @Autowired
+    private DiagramVersionRepository versionRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private MockMvc mockMvc;
@@ -54,6 +66,9 @@ class AuthControllerSecurityTest {
         mockMvc = MockMvcBuilders.webAppContextSetup(context)
                 .apply(springSecurity())
                 .build();
+        versionRepository.deleteAll();
+        diagramRepository.deleteAll();
+        projectRepository.deleteAll();
         userRepository.deleteAll();
     }
 

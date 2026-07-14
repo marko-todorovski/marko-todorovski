@@ -22,6 +22,12 @@ import java.util.UUID;
 @Repository
 public interface DomainDiagramRepository extends JpaRepository<Diagram, UUID> {
 
+    interface ProjectDiagramCount {
+        UUID getProjectId();
+
+        long getDiagramCount();
+    }
+
     /**
      * Find all diagrams of a specific type.
      *
@@ -73,6 +79,17 @@ public interface DomainDiagramRepository extends JpaRepository<Diagram, UUID> {
     List<Diagram> findRecentDiagrams();
 
     List<Diagram> findAllByProjectIdAndOwnerIdOrderByUpdatedAtDesc(UUID projectId, UUID ownerId);
+
+    long countByProjectIdAndOwnerId(UUID projectId, UUID ownerId);
+
+    @Query("""
+            SELECT d.project.id AS projectId, COUNT(d) AS diagramCount
+            FROM DomainDiagram d
+            WHERE d.owner.id = :ownerId
+              AND d.project IS NOT NULL
+            GROUP BY d.project.id
+            """)
+    List<ProjectDiagramCount> countDiagramsByProjectForOwner(@Param("ownerId") UUID ownerId);
 
     boolean existsByProjectIdAndOwnerId(UUID projectId, UUID ownerId);
 
