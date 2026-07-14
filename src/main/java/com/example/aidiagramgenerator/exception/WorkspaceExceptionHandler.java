@@ -2,6 +2,7 @@ package com.example.aidiagramgenerator.exception;
 
 import com.example.aidiagramgenerator.controller.DiagramVersionController;
 import com.example.aidiagramgenerator.controller.DiagramAiAssistantController;
+import com.example.aidiagramgenerator.controller.DiagramShareController;
 import com.example.aidiagramgenerator.controller.ProjectController;
 import com.example.aidiagramgenerator.controller.SavedDiagramController;
 import com.example.aidiagramgenerator.dto.response.WorkspaceErrorResponse;
@@ -21,7 +22,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
         ProjectController.class,
         SavedDiagramController.class,
         DiagramVersionController.class,
-        DiagramAiAssistantController.class
+        DiagramAiAssistantController.class,
+        DiagramShareController.class
 })
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class WorkspaceExceptionHandler {
@@ -68,6 +70,11 @@ public class WorkspaceExceptionHandler {
 
     @ExceptionHandler(DiagramAiException.class)
     public ResponseEntity<WorkspaceErrorResponse> handleDiagramAi(DiagramAiException ex) {
+        return error(ex.getStatus(), ex.getCode(), ex.getMessage());
+    }
+
+    @ExceptionHandler(DiagramShareException.class)
+    public ResponseEntity<WorkspaceErrorResponse> handleDiagramShare(DiagramShareException ex) {
         return error(ex.getStatus(), ex.getCode(), ex.getMessage());
     }
 

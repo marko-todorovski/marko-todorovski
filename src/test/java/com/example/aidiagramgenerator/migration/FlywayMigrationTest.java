@@ -29,6 +29,7 @@ class FlywayMigrationTest {
             assertTableExists(connection, "projects");
             assertTableExists(connection, "domain_diagrams");
             assertTableExists(connection, "diagram_versions");
+            assertTableExists(connection, "diagram_shares");
 
             assertColumnExists(connection, "domain_diagrams", "project_id");
             assertColumnExists(connection, "domain_diagrams", "owner_id");
@@ -40,6 +41,9 @@ class FlywayMigrationTest {
             assertConstraintExists(connection, "diagram_versions", "uk_diagram_versions_diagram_version");
             assertConstraintExists(connection, "diagram_versions", "fk_diagram_versions_diagram_id");
             assertConstraintExists(connection, "diagram_versions", "fk_diagram_versions_created_by_id");
+            assertConstraintExists(connection, "diagram_shares", "uk_diagram_shares_token_hash");
+            assertConstraintExists(connection, "diagram_shares", "fk_diagram_shares_diagram_id");
+            assertConstraintExists(connection, "diagram_shares", "fk_diagram_shares_diagram_version_id");
             assertConstraintExists(connection, "projects", "fk_projects_owner_id");
             assertConstraintExists(connection, "domain_diagrams", "fk_domain_diagrams_project_id");
             assertConstraintExists(connection, "domain_diagrams", "fk_domain_diagrams_owner_id");

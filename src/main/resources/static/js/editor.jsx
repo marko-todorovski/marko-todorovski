@@ -5,6 +5,7 @@
     const AuthApi = namespace.modules.api;
     const { formatDate, Modal, ProjectForm } = namespace.modules.shared;
     const { AiAssistantPanel } = namespace.modules.aiAssistant;
+    const { ShareDiagramModal } = namespace.modules.sharing;
 
     function DiagramEditorView({ diagramId, projectId, go, notify, loadProjects, setNavigationGuard }) {
     const [diagram, setDiagram] = useState(null);
@@ -24,6 +25,7 @@
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [sharingOpen, setSharingOpen] = useState(false);
     const [restoreTarget, setRestoreTarget] = useState(null);
     const [restoreLoading, setRestoreLoading] = useState(false);
     const previewUrlRef = useRef(null);
@@ -311,6 +313,7 @@
                     <p className="subtitle">{diagram.description || 'No description'}</p>
                 </div>
                 <div className="toolbar-actions">
+                    <button className="btn-secondary" onClick={() => setSharingOpen(true)}>Share</button>
                     <button className="btn-secondary" onClick={() => setEditingMetadata(true)}>Edit Metadata</button>
                     <button className="btn-danger" onClick={() => setConfirmDelete(true)}>Delete Diagram</button>
                 </div>
@@ -408,6 +411,15 @@
                 <Modal title="Edit diagram metadata" onClose={() => setEditingMetadata(false)}>
                     <ProjectForm initialProject={diagram} submitLabel="Save Metadata" onSubmit={updateMetadata} onCancel={() => setEditingMetadata(false)} />
                 </Modal>
+            )}
+            {sharingOpen && (
+                <ShareDiagramModal
+                    diagram={diagram}
+                    versions={versions}
+                    dirty={dirty}
+                    onClose={() => setSharingOpen(false)}
+                    notify={notify}
+                />
             )}
             {selectedVersion && (
                 <Modal title={`Version ${selectedVersion.versionNumber}`} onClose={() => setSelectedVersion(null)}>

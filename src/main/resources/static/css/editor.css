@@ -30,3 +30,12 @@
 .link-button { background: transparent; border: none; padding: 0; color: #60a5fa; text-decoration: underline; }
 .link-button:hover:not(:disabled) { background: transparent; color: #93c5fd; }
 button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+.share-modal .checkbox-row { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+.share-created { border: 1px solid #334155; border-radius: 8px; padding: 1rem; background: #0f172a; }
+.share-created input { width: 100%; font-family: 'SF Mono', Monaco, Consolas, monospace; }
+.share-list { display: grid; gap: 0.75rem; }
+.share-item { border: 1px solid #334155; border-radius: 8px; padding: 0.9rem; display: grid; gap: 0.65rem; background: #0f172a; }
+.share-item > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.public-share-shell { max-width: 1100px; margin: 0 auto; }
+.public-preview { min-height: 420px; }
+.eyebrow { display: inline-block; color: #94a3b8; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0; margin-bottom: 0.25rem; }

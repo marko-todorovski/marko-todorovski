@@ -27,6 +27,7 @@
         const { DashboardView, ProjectDetailsView } = requireModule('projects');
         const { DiagramEditorView } = requireModule('editor');
         const { GeneratorView } = requireModule('generator');
+        const { PublicShareView } = requireModule('sharing');
 
         function App() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -132,7 +133,9 @@
     }
 
     let content;
-    if (currentView.name === 'login') {
+    if (currentView.name === 'share') {
+        content = <PublicShareView token={currentView.token} />;
+    } else if (currentView.name === 'login') {
         content = <LoginView onLogin={(user, message) => { setCurrentUser(user); setAuthStatus('authenticated'); notify('success', message); }} go={go} />;
     } else if (currentView.name === 'register') {
         content = <RegisterView onLogin={(user, message) => { setCurrentUser(user); setAuthStatus('authenticated'); notify('success', message); }} go={go} />;

@@ -50,6 +50,7 @@ class Stage9FrontendStructureTest {
                 .contains("/js/auth.jsx?v=9")
                 .contains("/js/projects.jsx?v=9")
                 .contains("/js/ai-assistant.jsx?v=10")
+                .contains("/js/sharing.jsx?v=11")
                 .contains("/js/editor.jsx?v=9")
                 .contains("/js/generator.jsx?v=9")
                 .contains("/js/app.jsx?v=9")
@@ -64,6 +65,7 @@ class Stage9FrontendStructureTest {
                 "/js/auth.jsx?v=9",
                 "/js/projects.jsx?v=9",
                 "/js/ai-assistant.jsx?v=10",
+                "/js/sharing.jsx?v=11",
                 "/js/editor.jsx?v=9",
                 "/js/generator.jsx?v=9",
                 "/js/app.jsx?v=9"
@@ -85,7 +87,7 @@ class Stage9FrontendStructureTest {
                     .andExpect(status().isOk());
         }
 
-        assertThat(referenceCount).isEqualTo(14);
+        assertThat(referenceCount).isEqualTo(15);
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
                 .andExpect(result -> assertThat(result.getResponse().getForwardedUrl()).isEqualTo("index.html"));
@@ -102,6 +104,7 @@ class Stage9FrontendStructureTest {
         String auth = read("js/auth.jsx");
         String projects = read("js/projects.jsx");
         String aiAssistant = read("js/ai-assistant.jsx");
+        String sharing = read("js/sharing.jsx");
         String editor = read("js/editor.jsx");
         String generator = read("js/generator.jsx");
         String app = read("js/app.jsx");
@@ -126,6 +129,10 @@ class Stage9FrontendStructureTest {
         assertThat(aiAssistant)
                 .contains("AiAssistantPanel")
                 .contains("namespace.modules.aiAssistant");
+        assertThat(sharing)
+                .contains("ShareDiagramModal")
+                .contains("PublicShareView")
+                .contains("namespace.modules.sharing");
         assertThat(editor)
                 .contains("DiagramEditorView")
                 .contains("beforeunload")
