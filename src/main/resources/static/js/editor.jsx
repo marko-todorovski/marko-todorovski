@@ -4,6 +4,7 @@
     const { useState, useEffect, useRef } = React;
     const AuthApi = namespace.modules.api;
     const { formatDate, Modal, ProjectForm } = namespace.modules.shared;
+    const { AiAssistantPanel } = namespace.modules.aiAssistant;
 
     function DiagramEditorView({ diagramId, projectId, go, notify, loadProjects, setNavigationGuard }) {
     const [diagram, setDiagram] = useState(null);
@@ -179,6 +180,42 @@
         }
     }
 
+    async function saveAiVersion(proposal, instruction) {
+        if (!proposal?.sourceCode) return;
+        setSaveStatus('saving');
+        setSaveMessage('');
+        try {
+            const saved = await AuthApi.createVersion(diagramId, {
+                prompt: instruction ? `AI instruction: ${instruction}` : proposal.summary,
+                sourceCode: proposal.sourceCode,
+                sourceFormat: 'PLANTUML',
+                changeType: 'AI_MODIFIED',
+                modelUsed: proposal.modelUsed || 'ai-assistant',
+            });
+            if (!saved) {
+                setSaveStatus('idle');
+                setSaveMessage('No changes to save.');
+                return;
+            }
+            const updatedDiagram = await AuthApi.getDiagram(diagramId);
+            const source = updatedDiagram.currentSourceCode || '';
+            const prompt = updatedDiagram.originalPrompt || '';
+            setDiagram(updatedDiagram);
+            setEditorSource(source);
+            setOriginalSource(source);
+            setEditorPrompt(prompt);
+            setOriginalPrompt(prompt);
+            await refreshVersions();
+            await renderPreview(source);
+            setSaveStatus('saved');
+            setSaveMessage(`Saved AI version ${saved.versionNumber}.`);
+            notify('success', `Saved AI version ${saved.versionNumber}.`);
+        } catch (e) {
+            setSaveStatus('error');
+            setSaveMessage(e.message || 'AI version could not be saved.');
+        }
+    }
+
     function resetChanges() {
         if (!dirty || window.confirm('Reset unsaved source and prompt changes?')) {
             setEditorSource(originalSource);
@@ -328,6 +365,17 @@
                     </div>
                 </section>
             )}
+            <AiAssistantPanel
+                diagram={diagram}
+                diagramId={diagramId}
+                editorSource={editorSource}
+                editorPrompt={editorPrompt}
+                setEditorSource={setEditorSource}
+                setEditorPrompt={setEditorPrompt}
+                renderPreview={renderPreview}
+                saveAiVersion={saveAiVersion}
+                notify={notify}
+            />
             <section className="panel stack">
                 <div className="toolbar" style={{marginBottom: 0}}>
                     <h2>Version History</h2>

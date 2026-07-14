@@ -6,6 +6,7 @@ package com.example.aidiagramgenerator.domain;
 public enum DiagramChangeType {
     GENERATED,
     EDITED,
+    AI_MODIFIED,
     RESTORED,
     REPAIRED
 }

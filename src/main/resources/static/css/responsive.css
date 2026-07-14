@@ -6,6 +6,8 @@
     .row > *, .toolbar-actions button, .download-actions button { width: 100%; }
     .split-grid { grid-template-columns: 1fr; }
     .editor-layout { grid-template-columns: 1fr; }
+    .ai-comparison { grid-template-columns: 1fr; }
+    .ai-modal-body { min-width: 0; }
     .editor-textarea, .preview-panel { min-height: 320px; }
     .project-grid { grid-template-columns: 1fr; }
 }
