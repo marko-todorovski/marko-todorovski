@@ -168,9 +168,9 @@ class Stage7FrontendContractTest {
 
     @Test
     void staticFrontendContainsStage7HelpersWithoutClientSideAuthStorageOrOwnerId() throws Exception {
-        String html = Files.readString(Path.of("src/main/resources/static/index.html"));
+        String frontend = staticFrontendSource();
 
-        org.assertj.core.api.Assertions.assertThat(html)
+        org.assertj.core.api.Assertions.assertThat(frontend)
                 .contains("fetchCsrfToken")
                 .contains("apiFetch")
                 .contains("credentials: 'same-origin'")
@@ -183,6 +183,23 @@ class Stage7FrontendContractTest {
                 .doesNotContain("sessionStorage")
                 .doesNotContain("ownerId")
                 .doesNotContain("csrf(csrf -> csrf.disable())");
+    }
+
+    private String staticFrontendSource() throws Exception {
+        StringBuilder source = new StringBuilder();
+        source.append(Files.readString(Path.of("src/main/resources/static/index.html")));
+        try (java.util.stream.Stream<Path> files = Files.walk(Path.of("src/main/resources/static/js"))) {
+            files.filter(Files::isRegularFile)
+                    .sorted()
+                    .forEach(path -> {
+                        try {
+                            source.append('\n').append(Files.readString(path));
+                        } catch (java.io.IOException e) {
+                            throw new java.io.UncheckedIOException(e);
+                        }
+                    });
+        }
+        return source.toString();
     }
 
     private ApplicationUser saveUser(String email) {

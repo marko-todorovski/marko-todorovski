@@ -1,0 +1,11 @@
+@media (max-width: 760px) {
+    .top-nav-inner { align-items: flex-start; flex-direction: column; }
+    .nav-links { width: 100%; }
+    .app-shell { padding: 1.25rem 1rem; }
+    .row, .toolbar, .download-actions { align-items: stretch; flex-direction: column; }
+    .row > *, .toolbar-actions button, .download-actions button { width: 100%; }
+    .split-grid { grid-template-columns: 1fr; }
+    .editor-layout { grid-template-columns: 1fr; }
+    .editor-textarea, .preview-panel { min-height: 320px; }
+    .project-grid { grid-template-columns: 1fr; }
+}

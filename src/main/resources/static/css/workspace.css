@@ -1,0 +1,20 @@
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.toolbar-actions { display: flex; gap: 0.65rem; flex-wrap: wrap; }
+.project-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+.project-card, .diagram-card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.8rem; }
+.project-card h3, .diagram-card h3 { font-size: 1rem; color: #f8fafc; overflow-wrap: anywhere; }
+.card-meta { display: flex; flex-wrap: wrap; gap: 0.45rem; color: #94a3b8; font-size: 0.78rem; }
+.card-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: auto; }
+.empty-state { border: 1px dashed #334155; border-radius: 8px; padding: 2rem; text-align: center; background: #111827; }
+.notice { border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.86rem; margin-bottom: 1rem; }
+.notice.success { background: #052e1a; border: 1px solid #166534; color: #86efac; }
+.notice.error { background: #1c1010; border: 1px solid #7f1d1d; color: #fca5a5; }
+.notice.info { background: #0f2544; border: 1px solid #1d4ed8; color: #bfdbfe; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 30; background: rgba(2, 6, 23, 0.76); display: grid; place-items: center; padding: 1rem; }
+.modal { width: min(560px, 100%); max-height: 90vh; overflow-y: auto; background: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 1.25rem; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+.modal-header { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
+.modal-close { background: transparent; border: 1px solid #475569; padding: 0.35rem 0.6rem; }
+.split-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 1rem; align-items: start; }
+.diagram-list { display: grid; gap: 0.85rem; }
+.source-panel { background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 1rem; overflow: auto; max-height: 440px; }
+.source-panel pre { white-space: pre-wrap; word-break: break-word; color: #cbd5e1; font-family: 'SF Mono', Monaco, monospace; font-size: 0.82rem; line-height: 1.55; }

@@ -187,9 +187,9 @@ class Stage8WorkspaceEditorControllerTest {
 
     @Test
     void staticFrontendContainsEditorContractsWithoutUnsafeAuthOrPreviewPatterns() throws Exception {
-        String html = Files.readString(Path.of("src/main/resources/static/index.html"));
+        String frontend = staticFrontendSource();
 
-        assertThat(html)
+        assertThat(frontend)
                 .contains("DiagramEditorView")
                 .contains("apiFetchBlob")
                 .contains("credentials: 'same-origin'")
@@ -205,8 +205,25 @@ class Stage8WorkspaceEditorControllerTest {
                 .doesNotContain("ownerId")
                 .doesNotContain("csrf(csrf -> csrf.disable())");
 
-        assertThat(html.indexOf("dangerouslySetInnerHTML"))
-                .isEqualTo(html.lastIndexOf("dangerouslySetInnerHTML"));
+        assertThat(frontend.indexOf("dangerouslySetInnerHTML"))
+                .isEqualTo(frontend.lastIndexOf("dangerouslySetInnerHTML"));
+    }
+
+    private String staticFrontendSource() throws Exception {
+        StringBuilder source = new StringBuilder();
+        source.append(Files.readString(Path.of("src/main/resources/static/index.html")));
+        try (java.util.stream.Stream<Path> files = Files.walk(Path.of("src/main/resources/static/js"))) {
+            files.filter(Files::isRegularFile)
+                    .sorted()
+                    .forEach(path -> {
+                        try {
+                            source.append('\n').append(Files.readString(path));
+                        } catch (java.io.IOException e) {
+                            throw new java.io.UncheckedIOException(e);
+                        }
+                    });
+        }
+        return source.toString();
     }
 
     private ApplicationUser saveUser(String email) {
