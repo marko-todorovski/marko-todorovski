@@ -30,6 +30,8 @@ class FlywayMigrationTest {
             assertTableExists(connection, "domain_diagrams");
             assertTableExists(connection, "diagram_versions");
             assertTableExists(connection, "diagram_shares");
+            assertTableExists(connection, "project_members");
+            assertTableExists(connection, "project_invitations");
 
             assertColumnExists(connection, "domain_diagrams", "project_id");
             assertColumnExists(connection, "domain_diagrams", "owner_id");
@@ -47,6 +49,63 @@ class FlywayMigrationTest {
             assertConstraintExists(connection, "projects", "fk_projects_owner_id");
             assertConstraintExists(connection, "domain_diagrams", "fk_domain_diagrams_project_id");
             assertConstraintExists(connection, "domain_diagrams", "fk_domain_diagrams_owner_id");
+            assertConstraintExists(connection, "project_members", "uk_project_members_project_user");
+            assertConstraintExists(connection, "project_members", "fk_project_members_project_id");
+            assertConstraintExists(connection, "project_members", "fk_project_members_user_id");
+            assertConstraintExists(connection, "project_invitations", "uk_project_invitations_token_hash");
+            assertConstraintExists(connection, "project_invitations", "fk_project_invitations_project_id");
+        }
+    }
+
+    @Test
+    void shouldBackfillProjectOwnerMemberships() throws Exception {
+        String url = h2Url("membership_backfill");
+        UUID userId = UUID.randomUUID();
+        UUID projectId = UUID.randomUUID();
+
+        migrateTo(url, "6");
+
+        try (Connection connection = connect(url)) {
+            try (PreparedStatement userInsert = connection.prepareStatement("""
+                    INSERT INTO application_users
+                        (id, email, password_hash, first_name, last_name, created_at, updated_at, version)
+                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
+                    """)) {
+                userInsert.setObject(1, userId);
+                userInsert.setString(2, "backfill@example.com");
+                userInsert.setString(3, "hash");
+                userInsert.setString(4, "Back");
+                userInsert.setString(5, "Fill");
+                userInsert.executeUpdate();
+            }
+            try (PreparedStatement projectInsert = connection.prepareStatement("""
+                    INSERT INTO projects
+                        (id, owner_id, name, description, created_at, updated_at, version)
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
+                    """)) {
+                projectInsert.setObject(1, projectId);
+                projectInsert.setObject(2, userId);
+                projectInsert.setString(3, "Backfilled");
+                projectInsert.setString(4, "");
+                projectInsert.executeUpdate();
+            }
+        }
+
+        migrate(url);
+
+        try (Connection connection = connect(url);
+             PreparedStatement select = connection.prepareStatement("""
+                     SELECT role
+                     FROM project_members
+                     WHERE project_id = ? AND user_id = ?
+                     """)) {
+            select.setObject(1, projectId);
+            select.setObject(2, userId);
+            try (ResultSet resultSet = select.executeQuery()) {
+                assertTrue(resultSet.next());
+                assertEquals("OWNER", resultSet.getString("role"));
+                assertFalse(resultSet.next());
+            }
         }
     }
 
@@ -152,6 +211,17 @@ class FlywayMigrationTest {
                 .locations("classpath:db/migration/common", "classpath:db/migration/h2")
                 .baselineOnMigrate(true)
                 .baselineVersion("0")
+                .load()
+                .migrate();
+    }
+
+    private static void migrateTo(String url, String target) {
+        Flyway.configure()
+                .dataSource(url, "sa", "")
+                .locations("classpath:db/migration/common", "classpath:db/migration/h2")
+                .baselineOnMigrate(true)
+                .baselineVersion("0")
+                .target(target)
                 .load()
                 .migrate();
     }

@@ -3,7 +3,9 @@ package com.example.aidiagramgenerator.exception;
 import com.example.aidiagramgenerator.controller.DiagramVersionController;
 import com.example.aidiagramgenerator.controller.DiagramAiAssistantController;
 import com.example.aidiagramgenerator.controller.DiagramShareController;
+import com.example.aidiagramgenerator.controller.ProjectCollaborationController;
 import com.example.aidiagramgenerator.controller.ProjectController;
+import com.example.aidiagramgenerator.controller.ProjectInvitationController;
 import com.example.aidiagramgenerator.controller.SavedDiagramController;
 import com.example.aidiagramgenerator.dto.response.WorkspaceErrorResponse;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -23,7 +25,9 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
         SavedDiagramController.class,
         DiagramVersionController.class,
         DiagramAiAssistantController.class,
-        DiagramShareController.class
+        DiagramShareController.class,
+        ProjectCollaborationController.class,
+        ProjectInvitationController.class
 })
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class WorkspaceExceptionHandler {
@@ -76,6 +80,16 @@ public class WorkspaceExceptionHandler {
     @ExceptionHandler(DiagramShareException.class)
     public ResponseEntity<WorkspaceErrorResponse> handleDiagramShare(DiagramShareException ex) {
         return error(ex.getStatus(), ex.getCode(), ex.getMessage());
+    }
+
+    @ExceptionHandler(ProjectInvitationException.class)
+    public ResponseEntity<WorkspaceErrorResponse> handleProjectInvitation(ProjectInvitationException ex) {
+        return error(ex.getStatus(), ex.getCode(), ex.getMessage());
+    }
+
+    @ExceptionHandler(ProjectPermissionException.class)
+    public ResponseEntity<WorkspaceErrorResponse> handleProjectPermission(ProjectPermissionException ex) {
+        return error(HttpStatus.FORBIDDEN, "PROJECT_PERMISSION_DENIED", ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

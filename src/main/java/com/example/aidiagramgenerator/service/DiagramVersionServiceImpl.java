@@ -27,21 +27,24 @@ public class DiagramVersionServiceImpl implements DiagramVersionService {
     private final DomainDiagramRepository diagramRepository;
     private final DiagramVersionRepository versionRepository;
     private final ApplicationUserRepository userRepository;
+    private final ProjectAccessService projectAccessService;
 
     public DiagramVersionServiceImpl(
             DomainDiagramRepository diagramRepository,
             DiagramVersionRepository versionRepository,
-            ApplicationUserRepository userRepository) {
+            ApplicationUserRepository userRepository,
+            ProjectAccessService projectAccessService) {
         this.diagramRepository = diagramRepository;
         this.versionRepository = versionRepository;
         this.userRepository = userRepository;
+        this.projectAccessService = projectAccessService;
     }
 
     @Override
     @Transactional
     public DiagramVersion createInitialVersion(UUID diagramId, UUID ownerId) {
         ApplicationUser owner = requireUser(ownerId);
-        Diagram lockedDiagram = lockOwnedDiagram(diagramId, owner.getId());
+        Diagram lockedDiagram = lockEditableDiagram(diagramId, owner.getId());
         Optional<Integer> maximumVersion = versionRepository.findMaximumVersionNumber(lockedDiagram.getId());
         if (maximumVersion.isPresent()) {
             return versionRepository.findByDiagramIdAndVersionNumber(lockedDiagram.getId(), 1)
@@ -87,7 +90,7 @@ public class DiagramVersionServiceImpl implements DiagramVersionService {
             DiagramChangeType changeType,
             String modelUsed) {
         ApplicationUser owner = requireUser(ownerId);
-        Diagram lockedDiagram = lockOwnedDiagram(diagramId, owner.getId());
+        Diagram lockedDiagram = lockEditableDiagram(diagramId, owner.getId());
         String requiredSource = requireSourceCode(sourceCode);
         DiagramSourceFormat requiredFormat = requireSourceFormat(sourceFormat);
         String normalizedPrompt = trimPrompt(prompt);
@@ -124,16 +127,18 @@ public class DiagramVersionServiceImpl implements DiagramVersionService {
     @Override
     @Transactional(readOnly = true)
     public List<DiagramVersion> getVersionHistory(UUID diagramId, UUID ownerId) {
-        Diagram diagram = diagramRepository.findByIdAndOwnerId(requireId(diagramId, "Diagram ID"), requireId(ownerId, "Owner ID"))
-                .orElseThrow(() -> new DiagramNotFoundException("Diagram not found for owner"));
+        Diagram diagram = diagramRepository.findById(requireId(diagramId, "Diagram ID"))
+                .orElseThrow(() -> new DiagramNotFoundException("Diagram not found"));
+        projectAccessService.requireDiagramViewer(diagram, requireId(ownerId, "Owner ID"));
         return versionRepository.findAllByDiagramIdOrderByVersionNumberDesc(diagram.getId());
     }
 
     @Override
     @Transactional(readOnly = true)
     public DiagramVersion getVersion(UUID diagramId, UUID ownerId, int versionNumber) {
-        Diagram diagram = diagramRepository.findByIdAndOwnerId(requireId(diagramId, "Diagram ID"), requireId(ownerId, "Owner ID"))
-                .orElseThrow(() -> new DiagramNotFoundException("Diagram not found for owner"));
+        Diagram diagram = diagramRepository.findById(requireId(diagramId, "Diagram ID"))
+                .orElseThrow(() -> new DiagramNotFoundException("Diagram not found"));
+        projectAccessService.requireDiagramViewer(diagram, requireId(ownerId, "Owner ID"));
         if (versionNumber <= 0) {
             throw new InvalidDiagramVersionException("Version number must be positive");
         }
@@ -148,7 +153,7 @@ public class DiagramVersionServiceImpl implements DiagramVersionService {
             throw new InvalidDiagramVersionException("Version number must be positive");
         }
         ApplicationUser owner = requireUser(ownerId);
-        Diagram lockedDiagram = lockOwnedDiagram(diagramId, owner.getId());
+        Diagram lockedDiagram = lockEditableDiagram(diagramId, owner.getId());
         DiagramVersion historical = versionRepository.findByDiagramIdAndVersionNumber(
                         lockedDiagram.getId(),
                         versionNumber)
@@ -198,11 +203,13 @@ public class DiagramVersionServiceImpl implements DiagramVersionService {
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + ownerId));
     }
 
-    private Diagram lockOwnedDiagram(UUID diagramId, UUID ownerId) {
+    private Diagram lockEditableDiagram(UUID diagramId, UUID ownerId) {
         Diagram lockedDiagram = diagramRepository.findByIdForUpdate(requireId(diagramId, "Diagram ID"))
                 .orElseThrow(() -> new DiagramNotFoundException("Diagram not found"));
-        if (lockedDiagram.getOwner() == null || !ownerId.equals(lockedDiagram.getOwner().getId())) {
-            throw new DiagramAccessDeniedException("Diagram does not belong to owner");
+        try {
+            projectAccessService.requireDiagramEditor(lockedDiagram, ownerId);
+        } catch (DiagramNotFoundException e) {
+            throw new DiagramAccessDeniedException("Diagram does not belong to user");
         }
         return lockedDiagram;
     }

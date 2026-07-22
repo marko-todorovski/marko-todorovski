@@ -9,6 +9,7 @@
     .ai-comparison { grid-template-columns: 1fr; }
     .public-preview { min-height: 280px; }
     .share-item > div:first-child { align-items: flex-start; flex-direction: column; }
+    .member-item { grid-template-columns: 1fr; align-items: stretch; }
     .ai-modal-body { min-width: 0; }
     .editor-textarea, .preview-panel { min-height: 320px; }
     .project-grid { grid-template-columns: 1fr; }

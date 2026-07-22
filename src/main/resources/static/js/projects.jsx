@@ -4,10 +4,12 @@
     const { useState, useEffect } = React;
     const AuthApi = namespace.modules.api;
     const { formatDate, Modal, ProjectForm } = namespace.modules.shared;
+    const { ProjectCollaborationPanel, roleLabel, canEdit, canManageMembers } = namespace.modules.collaboration;
 
     function DashboardView({ projects, loadProjects, go, notify }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const editableProjects = projects.filter(project => canEdit(project.currentUserRole));
     const [showCreate, setShowCreate] = useState(false);
     const [editing, setEditing] = useState(null);
     const [deleting, setDeleting] = useState(null);
@@ -79,12 +81,14 @@
                         </div>
                         <div className="card-meta">
                             <span>{project.diagramCount} diagrams</span>
+                            <span>{roleLabel(project.currentUserRole)}</span>
+                            <span>{project.memberCount || 1} members</span>
                             <span>Updated {formatDate(project.updatedAt)}</span>
                         </div>
                         <div className="card-actions">
                             <button type="button" onClick={() => go('project', { projectId: project.id })}>Open</button>
-                            <button type="button" className="btn-secondary" onClick={() => setEditing(project)}>Edit</button>
-                            <button type="button" className="btn-danger" onClick={() => setDeleting(project)}>Delete</button>
+                            {canManageMembers(project.currentUserRole) && <button type="button" className="btn-secondary" onClick={() => setEditing(project)}>Edit</button>}
+                            {canManageMembers(project.currentUserRole) && <button type="button" className="btn-danger" onClick={() => setDeleting(project)}>Delete</button>}
                         </div>
                     </article>
                 ))}
@@ -177,6 +181,9 @@ function ProjectDetailsView({ projectId, go, notify, loadProjects }) {
     if (loading && !project) return <div className="loading-line">Loading project...</div>;
     if (error) return <div className="notice error">{error} <button className="link-button" onClick={refresh}>Retry</button></div>;
     if (!project) return null;
+    const projectRole = project.currentUserRole || 'VIEWER';
+    const editableProject = canManageMembers(projectRole);
+    const editableDiagrams = canEdit(projectRole);
 
     return (
         <div className="stack">
@@ -187,15 +194,18 @@ function ProjectDetailsView({ projectId, go, notify, loadProjects }) {
                     <p className="subtitle">{project.description || 'No description'}</p>
                     <div className="card-meta">
                         <span>{project.diagramCount} diagrams</span>
+                        <span>{roleLabel(projectRole)}</span>
+                        <span>{project.memberCount || 1} members</span>
                         <span>Updated {formatDate(project.updatedAt)}</span>
                     </div>
                 </div>
                 <div className="toolbar-actions">
-                    <button className="btn-secondary" onClick={() => setEditing(true)}>Edit Project</button>
-                    <button className="btn-danger" onClick={() => setDeletingProject(true)}>Delete Project</button>
-                    <button onClick={() => go('generate')}>Generate Diagram</button>
+                    {editableProject && <button className="btn-secondary" onClick={() => setEditing(true)}>Edit Project</button>}
+                    {editableProject && <button className="btn-danger" onClick={() => setDeletingProject(true)}>Delete Project</button>}
+                    {editableDiagrams && <button onClick={() => go('generate')}>Generate Diagram</button>}
                 </div>
             </div>
+            <ProjectCollaborationPanel project={project} notify={notify} onChanged={() => loadProjects(true)} go={go} />
             <section className="panel">
                 <div className="toolbar">
                     <h2>Saved diagrams</h2>
@@ -205,7 +215,7 @@ function ProjectDetailsView({ projectId, go, notify, loadProjects }) {
                     <div className="empty-state">
                         <h3>No diagrams saved in this project</h3>
                         <p className="muted">Generate a PlantUML diagram and save it here.</p>
-                        <button style={{marginTop: '1rem'}} onClick={() => go('generate')}>Generate Diagram</button>
+                        {editableDiagrams && <button style={{marginTop: '1rem'}} onClick={() => go('generate')}>Generate Diagram</button>}
                     </div>
                 ) : (
                     <div className="diagram-list">
@@ -224,7 +234,7 @@ function ProjectDetailsView({ projectId, go, notify, loadProjects }) {
                                 </div>
                                 <div className="card-actions">
                                     <button onClick={() => go('diagram', { diagramId: diagram.id, projectId })}>Open</button>
-                                    <button className="btn-danger" onClick={() => setDeletingDiagram(diagram)}>Delete</button>
+                                    {editableDiagrams && <button className="btn-danger" onClick={() => setDeletingDiagram(diagram)}>Delete</button>}
                                 </div>
                             </article>
                         ))}
@@ -273,7 +283,8 @@ function ProjectDetailsView({ projectId, go, notify, loadProjects }) {
 
     useEffect(() => {
         loadProjects(false).then(list => {
-            if (!projectId && list && list[0]) setProjectId(list[0].id);
+            const editable = (list || []).filter(project => canEdit(project.currentUserRole));
+            if (!projectId && editable[0]) setProjectId(editable[0].id);
         }).catch(e => setError(e.message || 'Projects could not be loaded.'));
     }, []);
 
@@ -349,7 +360,7 @@ function ProjectDetailsView({ projectId, go, notify, loadProjects }) {
                     <label htmlFor="save-project">Project</label>
                     <select id="save-project" value={projectId} onChange={e => setProjectId(e.target.value)}>
                         <option value="">Choose project</option>
-                        {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
+                        {editableProjects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
                     </select>
                 </div>
                 <div>

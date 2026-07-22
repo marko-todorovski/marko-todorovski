@@ -23,7 +23,9 @@
             setPassword('');
             await AuthApi.refreshCsrfToken();
             onLogin(user, 'Welcome back.');
-            go('dashboard');
+            const returnView = namespace.returnAfterAuth;
+            namespace.returnAfterAuth = null;
+            returnView ? go(returnView.name, returnView) : go('dashboard');
         } catch (e) {
             setError(e.status === 401 ? 'Invalid email or password.' : (e.message || 'Login failed.'));
         } finally {
@@ -87,7 +89,9 @@ function RegisterView({ onLogin, go }) {
             setForm({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' });
             await AuthApi.refreshCsrfToken();
             onLogin(user, 'Account created.');
-            go('dashboard');
+            const returnView = namespace.returnAfterAuth;
+            namespace.returnAfterAuth = null;
+            returnView ? go(returnView.name, returnView) : go('dashboard');
         } catch (e) {
             setError(e.code === 'DUPLICATE_EMAIL' ? 'That email is already registered.' : (e.message || 'Registration failed.'));
         } finally {

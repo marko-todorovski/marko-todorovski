@@ -40,18 +40,21 @@ public class DiagramAiAssistantServiceImpl implements DiagramAiAssistantService 
     private final DiagramRenderingService renderingService;
     private final DiagramAiAssistantRateLimiter rateLimiter;
     private final ObjectMapper objectMapper;
+    private final ProjectAccessService projectAccessService;
 
     public DiagramAiAssistantServiceImpl(
             DomainDiagramRepository diagramRepository,
             DiagramAiAssistantClient assistantClient,
             DiagramRenderingService renderingService,
             DiagramAiAssistantRateLimiter rateLimiter,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ProjectAccessService projectAccessService) {
         this.diagramRepository = diagramRepository;
         this.assistantClient = assistantClient;
         this.renderingService = renderingService;
         this.rateLimiter = rateLimiter;
         this.objectMapper = objectMapper;
+        this.projectAccessService = projectAccessService;
     }
 
     @Override
@@ -146,8 +149,9 @@ public class DiagramAiAssistantServiceImpl implements DiagramAiAssistantService 
     }
 
     private Diagram requireOwnedPlantUmlDiagram(UUID diagramId, UUID ownerId) {
-        Diagram diagram = diagramRepository.findByIdAndOwnerId(diagramId, ownerId)
+        Diagram diagram = diagramRepository.findById(diagramId)
                 .orElseThrow(() -> new DiagramNotFoundException("Diagram not found"));
+        projectAccessService.requireDiagramEditor(diagram, ownerId);
         if (diagram.getSourceFormat() != null && diagram.getSourceFormat() != DiagramSourceFormat.PLANTUML) {
             throw new DiagramAiException(HttpStatus.BAD_REQUEST, "AI_UNSUPPORTED_FORMAT", "AI editing supports PlantUML diagrams only.");
         }

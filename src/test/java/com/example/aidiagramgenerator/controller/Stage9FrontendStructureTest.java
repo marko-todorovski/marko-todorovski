@@ -51,6 +51,7 @@ class Stage9FrontendStructureTest {
                 .contains("/js/projects.jsx?v=9")
                 .contains("/js/ai-assistant.jsx?v=10")
                 .contains("/js/sharing.jsx?v=11")
+                .contains("/js/collaboration.jsx?v=12")
                 .contains("/js/editor.jsx?v=9")
                 .contains("/js/generator.jsx?v=9")
                 .contains("/js/app.jsx?v=9")
@@ -66,6 +67,7 @@ class Stage9FrontendStructureTest {
                 "/js/projects.jsx?v=9",
                 "/js/ai-assistant.jsx?v=10",
                 "/js/sharing.jsx?v=11",
+                "/js/collaboration.jsx?v=12",
                 "/js/editor.jsx?v=9",
                 "/js/generator.jsx?v=9",
                 "/js/app.jsx?v=9"
@@ -87,7 +89,7 @@ class Stage9FrontendStructureTest {
                     .andExpect(status().isOk());
         }
 
-        assertThat(referenceCount).isEqualTo(15);
+        assertThat(referenceCount).isEqualTo(16);
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
                 .andExpect(result -> assertThat(result.getResponse().getForwardedUrl()).isEqualTo("index.html"));
@@ -105,6 +107,7 @@ class Stage9FrontendStructureTest {
         String projects = read("js/projects.jsx");
         String aiAssistant = read("js/ai-assistant.jsx");
         String sharing = read("js/sharing.jsx");
+        String collaboration = read("js/collaboration.jsx");
         String editor = read("js/editor.jsx");
         String generator = read("js/generator.jsx");
         String app = read("js/app.jsx");
@@ -133,6 +136,10 @@ class Stage9FrontendStructureTest {
                 .contains("ShareDiagramModal")
                 .contains("PublicShareView")
                 .contains("namespace.modules.sharing");
+        assertThat(collaboration)
+                .contains("ProjectCollaborationPanel")
+                .contains("InvitationLandingView")
+                .contains("namespace.modules.collaboration");
         assertThat(editor)
                 .contains("DiagramEditorView")
                 .contains("beforeunload")

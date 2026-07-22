@@ -36,13 +36,12 @@ public interface DiagramShareRepository extends JpaRepository<DiagramShare, UUID
     @Query("""
             SELECT s
             FROM DiagramShare s
+            JOIN FETCH s.diagram d
             JOIN FETCH s.diagramVersion v
             WHERE s.id = :shareId
               AND s.diagram.id = :diagramId
-              AND s.diagram.owner.id = :ownerId
             """)
-    Optional<DiagramShare> findOwnedShare(
+    Optional<DiagramShare> findByIdAndDiagramId(
             @Param("diagramId") UUID diagramId,
-            @Param("shareId") UUID shareId,
-            @Param("ownerId") UUID ownerId);
+            @Param("shareId") UUID shareId);
 }

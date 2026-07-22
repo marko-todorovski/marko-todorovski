@@ -16,5 +16,10 @@
 .modal-close { background: transparent; border: 1px solid #475569; padding: 0.35rem 0.6rem; }
 .split-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 1rem; align-items: start; }
 .diagram-list { display: grid; gap: 0.85rem; }
+.collaboration-panel { border-color: #475569; }
+.member-list { display: grid; gap: 0.75rem; }
+.member-item { border: 1px solid #334155; border-radius: 8px; background: #0f172a; padding: 0.85rem; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 0.75rem; }
+.role-badge { display: inline-flex; align-items: center; min-height: 1.75rem; border: 1px solid #64748b; border-radius: 999px; padding: 0.15rem 0.55rem; color: #e2e8f0; font-size: 0.78rem; font-weight: 700; }
+.invite-modal .share-created { margin-top: 0.5rem; }
 .source-panel { background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 1rem; overflow: auto; max-height: 440px; }
 .source-panel pre { white-space: pre-wrap; word-break: break-word; color: #cbd5e1; font-family: 'SF Mono', Monaco, monospace; font-size: 0.82rem; line-height: 1.55; }

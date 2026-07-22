@@ -36,6 +36,7 @@ public class DiagramShareServiceImpl implements DiagramShareService {
     private final DiagramShareTokenService tokenService;
     private final PublicShareRateLimiter rateLimiter;
     private final Clock clock;
+    private final ProjectAccessService projectAccessService;
 
     public DiagramShareServiceImpl(
             DomainDiagramRepository diagramRepository,
@@ -43,13 +44,15 @@ public class DiagramShareServiceImpl implements DiagramShareService {
             DiagramShareRepository shareRepository,
             DiagramShareTokenService tokenService,
             PublicShareRateLimiter rateLimiter,
-            Clock clock) {
+            Clock clock,
+            ProjectAccessService projectAccessService) {
         this.diagramRepository = diagramRepository;
         this.versionRepository = versionRepository;
         this.shareRepository = shareRepository;
         this.tokenService = tokenService;
         this.rateLimiter = rateLimiter;
         this.clock = clock;
+        this.projectAccessService = projectAccessService;
     }
 
     @Override
@@ -96,7 +99,8 @@ public class DiagramShareServiceImpl implements DiagramShareService {
     @Override
     @Transactional
     public DiagramShare revokeShare(UUID diagramId, UUID shareId, UUID ownerId) {
-        DiagramShare share = shareRepository.findOwnedShare(requireId(diagramId, "Diagram ID"), requireId(shareId, "Share ID"), requireId(ownerId, "Owner ID"))
+        requireOwnedDiagram(diagramId, ownerId);
+        DiagramShare share = shareRepository.findByIdAndDiagramId(requireId(diagramId, "Diagram ID"), requireId(shareId, "Share ID"))
                 .orElseThrow(() -> new DiagramShareException(HttpStatus.NOT_FOUND, "SHARE_NOT_FOUND", "Share not found"));
         if (share.isRevoked()) {
             throw new DiagramShareException(HttpStatus.CONFLICT, "SHARE_ALREADY_REVOKED", "Share is already revoked");
@@ -149,8 +153,10 @@ public class DiagramShareServiceImpl implements DiagramShareService {
     }
 
     private Diagram requireOwnedDiagram(UUID diagramId, UUID ownerId) {
-        return diagramRepository.findByIdAndOwnerId(requireId(diagramId, "Diagram ID"), requireId(ownerId, "Owner ID"))
-                .orElseThrow(() -> new DiagramNotFoundException("Diagram not found for owner"));
+        Diagram diagram = diagramRepository.findById(requireId(diagramId, "Diagram ID"))
+                .orElseThrow(() -> new DiagramNotFoundException("Diagram not found"));
+        projectAccessService.requireDiagramOwner(diagram, requireId(ownerId, "Owner ID"));
+        return diagram;
     }
 
     private Instant validateExpiration(Instant expiresAt) {

@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -80,7 +81,11 @@ public interface DomainDiagramRepository extends JpaRepository<Diagram, UUID> {
 
     List<Diagram> findAllByProjectIdAndOwnerIdOrderByUpdatedAtDesc(UUID projectId, UUID ownerId);
 
+    List<Diagram> findAllByProjectIdOrderByUpdatedAtDesc(UUID projectId);
+
     long countByProjectIdAndOwnerId(UUID projectId, UUID ownerId);
+
+    long countByProjectId(UUID projectId);
 
     @Query("""
             SELECT d.project.id AS projectId, COUNT(d) AS diagramCount
@@ -91,7 +96,17 @@ public interface DomainDiagramRepository extends JpaRepository<Diagram, UUID> {
             """)
     List<ProjectDiagramCount> countDiagramsByProjectForOwner(@Param("ownerId") UUID ownerId);
 
+    @Query("""
+            SELECT d.project.id AS projectId, COUNT(d) AS diagramCount
+            FROM DomainDiagram d
+            WHERE d.project.id IN :projectIds
+            GROUP BY d.project.id
+            """)
+    List<ProjectDiagramCount> countDiagramsByProjectIds(@Param("projectIds") Collection<UUID> projectIds);
+
     boolean existsByProjectIdAndOwnerId(UUID projectId, UUID ownerId);
+
+    boolean existsByProjectId(UUID projectId);
 
     Optional<Diagram> findByIdAndOwnerId(UUID diagramId, UUID ownerId);
 

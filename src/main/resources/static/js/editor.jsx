@@ -6,6 +6,7 @@
     const { formatDate, Modal, ProjectForm } = namespace.modules.shared;
     const { AiAssistantPanel } = namespace.modules.aiAssistant;
     const { ShareDiagramModal } = namespace.modules.sharing;
+    const { roleLabel, canEdit, canManageMembers } = namespace.modules.collaboration;
 
     function DiagramEditorView({ diagramId, projectId, go, notify, loadProjects, setNavigationGuard }) {
     const [diagram, setDiagram] = useState(null);
@@ -28,11 +29,14 @@
     const [sharingOpen, setSharingOpen] = useState(false);
     const [restoreTarget, setRestoreTarget] = useState(null);
     const [restoreLoading, setRestoreLoading] = useState(false);
+    const [projectRole, setProjectRole] = useState('VIEWER');
     const previewUrlRef = useRef(null);
     const previewRequestRef = useRef(0);
 
     const isPlantUml = diagram?.sourceFormat === 'PLANTUML';
-    const dirty = editorSource !== originalSource || editorPrompt !== originalPrompt;
+    const canEditDiagram = canEdit(projectRole);
+    const canShareDiagram = canManageMembers(projectRole);
+    const dirty = canEditDiagram && (editorSource !== originalSource || editorPrompt !== originalPrompt);
 
     function discardMessage() {
         return 'You have unsaved changes. Continue and discard them?';
@@ -55,6 +59,10 @@
         try {
             const loaded = await AuthApi.getDiagram(diagramId);
             setDiagram(loaded);
+            if (loaded.projectId || projectId) {
+                const project = await AuthApi.getProject(projectId || loaded.projectId);
+                setProjectRole(project.currentUserRole || 'VIEWER');
+            }
             const source = loaded.currentSourceCode || '';
             const prompt = loaded.originalPrompt || '';
             setEditorSource(source);
@@ -313,9 +321,9 @@
                     <p className="subtitle">{diagram.description || 'No description'}</p>
                 </div>
                 <div className="toolbar-actions">
-                    <button className="btn-secondary" onClick={() => setSharingOpen(true)}>Share</button>
-                    <button className="btn-secondary" onClick={() => setEditingMetadata(true)}>Edit Metadata</button>
-                    <button className="btn-danger" onClick={() => setConfirmDelete(true)}>Delete Diagram</button>
+                    {canShareDiagram && <button className="btn-secondary" onClick={() => setSharingOpen(true)}>Share</button>}
+                    {canEditDiagram && <button className="btn-secondary" onClick={() => setEditingMetadata(true)}>Edit Metadata</button>}
+                    {canEditDiagram && <button className="btn-danger" onClick={() => setConfirmDelete(true)}>Delete Diagram</button>}
                 </div>
             </div>
             <section className="panel stack">
@@ -328,10 +336,13 @@
                     <div className="detail-item"><span className="detail-label">Updated</span><span className="detail-value">{formatDate(diagram.updatedAt)}</span></div>
                 </div>
             </section>
+            {!canEditDiagram && (
+                <div className="notice info">You have {roleLabel(projectRole)} access. This diagram is read-only.</div>
+            )}
             {!isPlantUml && (
                 <div className="notice info">Editing and live preview are currently available for PlantUML diagrams only. This diagram remains read-only.</div>
             )}
-            {isPlantUml ? (
+            {isPlantUml && canEditDiagram ? (
                 <div className="editor-layout">
                     <section className="panel stack">
                         <div>
@@ -366,9 +377,21 @@
                     <div className="source-panel">
                         <pre>{diagram.currentSourceCode || 'No source code stored.'}</pre>
                     </div>
+                    {isPlantUml && (
+                        <>
+                            <div className="toolbar" style={{marginBottom: 0}}>
+                                <h2>Preview</h2>
+                                <span className={`badge ${previewStatus === 'error' ? 'error' : ''}`}>{previewStatus}</span>
+                            </div>
+                            <div className="preview-panel" aria-live="polite">
+                                {previewUrl ? <img src={previewUrl} alt="Rendered PlantUML preview" /> : <div className="preview-empty">Preview will appear here.</div>}
+                            </div>
+                            {previewMessage && <div className={previewStatus === 'error' ? 'notice error' : 'editor-status'}>{previewMessage}</div>}
+                        </>
+                    )}
                 </section>
             )}
-            <AiAssistantPanel
+            {canEditDiagram && <AiAssistantPanel
                 diagram={diagram}
                 diagramId={diagramId}
                 editorSource={editorSource}
@@ -378,7 +401,7 @@
                 renderPreview={renderPreview}
                 saveAiVersion={saveAiVersion}
                 notify={notify}
-            />
+            />}
             <section className="panel stack">
                 <div className="toolbar" style={{marginBottom: 0}}>
                     <h2>Version History</h2>
@@ -400,19 +423,19 @@
                                 </div>
                                 <div className="toolbar-actions">
                                     <button className="btn-secondary" onClick={() => openVersion(version.versionNumber)} disabled={selectedVersionLoading}>View</button>
-                                    {version.versionNumber !== diagram.currentVersionNumber && <button onClick={() => setRestoreTarget(version)}>Restore</button>}
+                                    {canEditDiagram && version.versionNumber !== diagram.currentVersionNumber && <button onClick={() => setRestoreTarget(version)}>Restore</button>}
                                 </div>
                             </article>
                         ))}
                     </div>
                 )}
             </section>
-            {editingMetadata && (
+            {editingMetadata && canEditDiagram && (
                 <Modal title="Edit diagram metadata" onClose={() => setEditingMetadata(false)}>
                     <ProjectForm initialProject={diagram} submitLabel="Save Metadata" onSubmit={updateMetadata} onCancel={() => setEditingMetadata(false)} />
                 </Modal>
             )}
-            {sharingOpen && (
+            {sharingOpen && canShareDiagram && (
                 <ShareDiagramModal
                     diagram={diagram}
                     versions={versions}
@@ -439,14 +462,14 @@
                             <pre className="version-code">{selectedVersion.sourceCode}</pre>
                         </div>
                         <div className="toolbar-actions">
-                            {selectedVersion.sourceFormat === 'PLANTUML' && <button onClick={() => loadVersionIntoEditor(selectedVersion)}>Load into Editor</button>}
-                            {selectedVersion.versionNumber !== diagram.currentVersionNumber && <button className="btn-secondary" onClick={() => setRestoreTarget(selectedVersion)}>Restore This Version</button>}
+                            {canEditDiagram && selectedVersion.sourceFormat === 'PLANTUML' && <button onClick={() => loadVersionIntoEditor(selectedVersion)}>Load into Editor</button>}
+                            {canEditDiagram && selectedVersion.versionNumber !== diagram.currentVersionNumber && <button className="btn-secondary" onClick={() => setRestoreTarget(selectedVersion)}>Restore This Version</button>}
                             <button className="btn-secondary" onClick={() => setSelectedVersion(null)}>Close</button>
                         </div>
                     </div>
                 </Modal>
             )}
-            {restoreTarget && (
+            {restoreTarget && canEditDiagram && (
                 <Modal title={`Restore version ${restoreTarget.versionNumber}`} onClose={() => setRestoreTarget(null)}>
                     <div className="stack">
                         <p className="muted">Restore does not delete newer versions. It creates a new version from this historical source.</p>
@@ -457,7 +480,7 @@
                     </div>
                 </Modal>
             )}
-            {confirmDelete && (
+            {confirmDelete && canEditDiagram && (
                 <Modal title="Delete diagram" onClose={() => setConfirmDelete(false)}>
                     <div className="stack">
                         <p className="muted">Delete "{diagram.name}"?</p>

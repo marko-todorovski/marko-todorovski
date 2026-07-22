@@ -120,6 +120,16 @@
         createVersion: (id, data) => apiFetch(`/api/workspace/diagrams/${id}/versions`, { method: 'POST', body: data }),
         getVersion: (id, versionNumber) => apiFetch(`/api/workspace/diagrams/${id}/versions/${versionNumber}`),
         restoreVersion: (id, versionNumber) => apiFetch(`/api/workspace/diagrams/${id}/versions/${versionNumber}/restore`, { method: 'POST' }),
+        listProjectMembers: projectId => apiFetch(`/api/projects/${projectId}/members`),
+        updateProjectMemberRole: (projectId, memberId, role) => apiFetch(`/api/projects/${projectId}/members/${memberId}/role`, { method: 'PUT', body: { role } }),
+        removeProjectMember: (projectId, memberId) => apiFetch(`/api/projects/${projectId}/members/${memberId}`, { method: 'DELETE' }),
+        leaveProject: projectId => apiFetch(`/api/projects/${projectId}/leave`, { method: 'POST' }),
+        createProjectInvitation: (projectId, data) => apiFetch(`/api/projects/${projectId}/invitations`, { method: 'POST', body: data }),
+        listProjectInvitations: projectId => apiFetch(`/api/projects/${projectId}/invitations`),
+        revokeProjectInvitation: (projectId, invitationId) => apiFetch(`/api/projects/${projectId}/invitations/${invitationId}/revoke`, { method: 'POST' }),
+        getInvitationMetadata: token => apiFetch(`/api/invitations/${encodeURIComponent(token)}`),
+        acceptInvitation: token => apiFetch(`/api/invitations/${encodeURIComponent(token)}/accept`, { method: 'POST' }),
+        rejectInvitation: token => apiFetch(`/api/invitations/${encodeURIComponent(token)}/reject`, { method: 'POST' }),
     };
 })();
 

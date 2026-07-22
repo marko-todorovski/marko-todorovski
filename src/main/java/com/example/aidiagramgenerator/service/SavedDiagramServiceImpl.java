@@ -31,18 +31,21 @@ public class SavedDiagramServiceImpl implements SavedDiagramService {
     private final DomainDiagramRepository diagramRepository;
     private final DiagramVersionRepository versionRepository;
     private final DiagramVersionService diagramVersionService;
+    private final ProjectAccessService projectAccessService;
 
     public SavedDiagramServiceImpl(
             ApplicationUserRepository userRepository,
             ProjectRepository projectRepository,
             DomainDiagramRepository diagramRepository,
             DiagramVersionRepository versionRepository,
-            DiagramVersionService diagramVersionService) {
+            DiagramVersionService diagramVersionService,
+            ProjectAccessService projectAccessService) {
         this.userRepository = userRepository;
         this.projectRepository = projectRepository;
         this.diagramRepository = diagramRepository;
         this.versionRepository = versionRepository;
         this.diagramVersionService = diagramVersionService;
+        this.projectAccessService = projectAccessService;
     }
 
     @Override
@@ -58,7 +61,7 @@ public class SavedDiagramServiceImpl implements SavedDiagramService {
             String sourceCode,
             String modelUsed) {
         ApplicationUser owner = requireUser(ownerId);
-        Project project = requireOwnedProject(projectId, owner.getId());
+        Project project = requireEditableProject(projectId, owner.getId());
         String normalizedName = normalizeName(name);
         String requiredSource = requireSourceCode(sourceCode);
         DiagramType requiredDiagramType = requireDiagramType(diagramType);
@@ -83,7 +86,7 @@ public class SavedDiagramServiceImpl implements SavedDiagramService {
 
         Diagram savedDiagram = diagramRepository.saveAndFlush(diagram);
         diagramVersionService.createInitialVersion(savedDiagram.getId(), owner.getId());
-        return diagramRepository.findByIdAndOwnerId(savedDiagram.getId(), owner.getId())
+        return diagramRepository.findById(savedDiagram.getId())
                 .orElseThrow(() -> new DiagramNotFoundException("Saved diagram not found after version creation"));
     }
 
@@ -96,7 +99,7 @@ public class SavedDiagramServiceImpl implements SavedDiagramService {
             String name,
             String description) {
         ApplicationUser owner = requireUser(ownerId);
-        Project project = requireOwnedProject(projectId, owner.getId());
+        Project project = requireEditableProject(projectId, owner.getId());
         Diagram diagram = diagramRepository.findById(requireId(diagramId, "Diagram ID"))
                 .orElseThrow(() -> new DiagramNotFoundException("Diagram not found"));
         if (diagram.getOwner() != null && !owner.getId().equals(diagram.getOwner().getId())) {
@@ -121,28 +124,32 @@ public class SavedDiagramServiceImpl implements SavedDiagramService {
         if (versionRepository.findMaximumVersionNumber(savedDiagram.getId()).isEmpty()) {
             diagramVersionService.createInitialVersion(savedDiagram.getId(), owner.getId());
         }
-        return diagramRepository.findByIdAndOwnerId(savedDiagram.getId(), owner.getId())
+        return diagramRepository.findById(savedDiagram.getId())
                 .orElseThrow(() -> new DiagramNotFoundException("Attached diagram not found after version creation"));
     }
 
     @Override
     @Transactional(readOnly = true)
     public Diagram getDiagramForOwner(UUID diagramId, UUID ownerId) {
-        return diagramRepository.findByIdAndOwnerId(requireId(diagramId, "Diagram ID"), requireId(ownerId, "Owner ID"))
-                .orElseThrow(() -> new DiagramNotFoundException("Diagram not found for owner"));
+        Diagram diagram = diagramRepository.findById(requireId(diagramId, "Diagram ID"))
+                .orElseThrow(() -> new DiagramNotFoundException("Diagram not found"));
+        projectAccessService.requireDiagramViewer(diagram, requireId(ownerId, "Owner ID"));
+        return diagram;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Diagram> getProjectDiagrams(UUID projectId, UUID ownerId) {
-        requireOwnedProject(projectId, ownerId);
-        return diagramRepository.findAllByProjectIdAndOwnerIdOrderByUpdatedAtDesc(projectId, ownerId);
+        projectAccessService.requireProjectViewer(projectId, ownerId);
+        return diagramRepository.findAllByProjectIdOrderByUpdatedAtDesc(projectId);
     }
 
     @Override
     @Transactional
     public Diagram updateDiagramMetadata(UUID diagramId, UUID ownerId, String name, String description) {
-        Diagram diagram = getDiagramForOwner(diagramId, ownerId);
+        Diagram diagram = diagramRepository.findById(requireId(diagramId, "Diagram ID"))
+                .orElseThrow(() -> new DiagramNotFoundException("Diagram not found"));
+        projectAccessService.requireDiagramEditor(diagram, ownerId);
         diagram.setName(normalizeName(name));
         diagram.setDescription(normalizeOptionalText(description, MAX_DIAGRAM_DESCRIPTION_LENGTH, "Diagram description"));
         return diagramRepository.save(diagram);
@@ -151,7 +158,9 @@ public class SavedDiagramServiceImpl implements SavedDiagramService {
     @Override
     @Transactional
     public void deleteDiagram(UUID diagramId, UUID ownerId) {
-        Diagram diagram = getDiagramForOwner(diagramId, ownerId);
+        Diagram diagram = diagramRepository.findById(requireId(diagramId, "Diagram ID"))
+                .orElseThrow(() -> new DiagramNotFoundException("Diagram not found"));
+        projectAccessService.requireDiagramEditor(diagram, ownerId);
         diagramRepository.delete(diagram);
     }
 
@@ -160,9 +169,10 @@ public class SavedDiagramServiceImpl implements SavedDiagramService {
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + ownerId));
     }
 
-    private Project requireOwnedProject(UUID projectId, UUID ownerId) {
-        return projectRepository.findByIdAndOwnerId(requireId(projectId, "Project ID"), requireId(ownerId, "Owner ID"))
-                .orElseThrow(() -> new ProjectNotFoundException("Project not found for owner"));
+    private Project requireEditableProject(UUID projectId, UUID ownerId) {
+        projectAccessService.requireProjectEditor(projectId, ownerId);
+        return projectRepository.findById(requireId(projectId, "Project ID"))
+                .orElseThrow(() -> new ProjectNotFoundException("Project not found"));
     }
 
     private static String normalizeName(String name) {

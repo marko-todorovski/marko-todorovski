@@ -16,9 +16,23 @@ import java.util.UUID;
 @Repository
 public interface DiagramVersionRepository extends JpaRepository<DiagramVersion, UUID> {
 
-    List<DiagramVersion> findAllByDiagramIdOrderByVersionNumberDesc(UUID diagramId);
+    @Query("""
+            SELECT v
+            FROM DiagramVersion v
+            LEFT JOIN FETCH v.createdBy
+            WHERE v.diagram.id = :diagramId
+            ORDER BY v.versionNumber DESC
+            """)
+    List<DiagramVersion> findAllByDiagramIdOrderByVersionNumberDesc(@Param("diagramId") UUID diagramId);
 
-    Optional<DiagramVersion> findByDiagramIdAndVersionNumber(UUID diagramId, int versionNumber);
+    @Query("""
+            SELECT v
+            FROM DiagramVersion v
+            LEFT JOIN FETCH v.createdBy
+            WHERE v.diagram.id = :diagramId
+              AND v.versionNumber = :versionNumber
+            """)
+    Optional<DiagramVersion> findByDiagramIdAndVersionNumber(@Param("diagramId") UUID diagramId, @Param("versionNumber") int versionNumber);
 
     boolean existsByDiagramIdAndVersionNumber(UUID diagramId, int versionNumber);
 
