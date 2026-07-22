@@ -9,19 +9,31 @@
 
 A full-stack Spring Boot application that generates, edits, versions, shares, and collaborates on software engineering diagrams (Mermaid / PlantUML / Draw.io formats). Includes session-based authentication, a project dashboard, an in-browser diagram editor, AI-assisted editing, public sharing, team workspaces, and automated repository analysis.
 
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Java 21, Spring Boot 4, Spring Security, Spring Data JPA |
+| Frontend | React 18 (in-browser Babel/JSX, no build step) |
+| Database | PostgreSQL (production), H2 (development) |
+| Migrations | Flyway |
+| Diagram formats | Mermaid, PlantUML, Draw.io |
+| AI integration | Pluggable LLM interface (OpenAI / Claude / Ollama-ready) |
+| API docs | OpenAPI / Swagger UI |
+
 ## Features
 
+- **Authentication & security** — session-based auth with Spring Security, ownership-aware access control
+- **Project dashboard** — create and manage diagram projects from a central workspace
+- **Diagram editor** — in-browser editing of generated Mermaid/PlantUML code with live preview
+- **Version history** — every save is tracked; browse and restore prior versions of a diagram
+- **AI-assisted editing** — refine existing diagrams via natural-language instructions to an LLM
+- **Public sharing** — generate secure, token-based public links so diagrams can be viewed without an account
+- **Team collaboration** — project membership with roles (owner/editor/viewer) and email-based invitations
+- **Repository analysis** — import a GitHub repo (or ZIP), detect languages, and scan structure as a foundation for diagram generation
 - **Diagram generation** from natural language, XML, and repository URLs (Class, Sequence, ER, Architecture, C4 Context, and more)
-- **Authentication & security**: session-based auth with Spring Security
-- **Project dashboard & editor**: create, edit, and manage diagrams in-browser with version history
-- **AI-assisted editing**: refine existing diagrams via natural-language instructions
-- **Public sharing**: generate secure, shareable public links for diagrams
-- **Team workspaces**: project membership, roles, and email invitations
-- **Repository analysis**: import a GitHub repo (or ZIP), detect languages, and scan structure as a foundation for diagram generation
-- **Multiple export formats**: Mermaid, PlantUML, Draw.io
-- **Human evaluation framework**: clarity, correctness, and usefulness scoring per diagram
+- **Human evaluation framework** — clarity, correctness, and usefulness scoring per generated diagram
 - **Database persistence** with Flyway migrations (H2 for dev, PostgreSQL for production)
-- **API documentation** via Swagger UI
 
 ## Quick Start
 
@@ -55,6 +67,34 @@ A full-stack Spring Boot application that generates, edits, versions, shares, an
 Layered Spring Boot backend (Controller → Service → Repository → Database) with a modular JSX-based static frontend, no build step required.
 
 ```
+┌──────────────────────────────────────────────────────────────┐
+│  Browser (React 18, in-browser Babel)                        │
+│  auth · dashboard · editor · ai-assistant · sharing ·         │
+│  collaboration · repositories                                │
+└───────────────────────────┬────────────────────────────────────┘
+                            │ REST / JSON (session cookie auth)
+┌───────────────────────────▼────────────────────────────────────┐
+│  Controller Layer                                              │
+│  Diagram · Auth · Project · ProjectCollaboration ·             │
+│  ProjectInvitation · DiagramVersion · DiagramShare ·            │
+│  Repository · RepositoryScan · DiagramAiAssistant               │
+└───────────────────────────┬────────────────────────────────────┘
+                            │
+┌───────────────────────────▼────────────────────────────────────┐
+│  Service Layer                                                 │
+│  business logic, permission checks, LLM integration point       │
+└───────────────────────────┬────────────────────────────────────┘
+                            │
+┌───────────────────────────▼────────────────────────────────────┐
+│  Repository Layer (Spring Data JPA)                            │
+└───────────────────────────┬────────────────────────────────────┘
+                            │
+┌───────────────────────────▼────────────────────────────────────┐
+│  Database (PostgreSQL / H2), Flyway-migrated                    │
+└──────────────────────────────────────────────────────────────┘
+```
+
+```
 src/main/java/com/example/aidiagramgenerator/
 ├── controller/    # REST endpoints: diagrams, auth, projects, workspaces,
 │                  #   invitations, sharing, versions, repositories, AI assistant
@@ -69,6 +109,23 @@ src/main/resources/
 └── static/js/     # Modular frontend (auth, editor, projects, repositories,
                    #   collaboration, sharing, ai-assistant, routing)
 ```
+
+## Screenshots
+
+| | |
+|---|---|
+| **Dashboard** | ![Dashboard](docs/images/dashboard.png) |
+| **Diagram Editor** | ![Editor](docs/images/editor.png) |
+| **AI Assistant** | ![AI Assistant](docs/images/ai-assistant.png) |
+| **Public Share Page** | ![Public Share](docs/images/public-share.png) |
+| **Collaboration / Members** | ![Collaboration](docs/images/collaboration.png) |
+| **Repository Analysis** | ![Repository Analysis](docs/images/repository-analysis.png) |
+
+## Demo
+
+![Demo](docs/images/demo.gif)
+
+Full walkthrough: register → create project → generate diagram → edit → AI-assist → save version → share publicly → invite member → analyze repository.
 
 ## Project Timeline
 
