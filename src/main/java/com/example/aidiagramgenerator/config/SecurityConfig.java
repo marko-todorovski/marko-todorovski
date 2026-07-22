@@ -66,7 +66,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/invitations/**").authenticated()
-                        .requestMatchers("/api/projects/**", "/api/workspace/**").authenticated()
+                        .requestMatchers("/api/projects/**", "/api/workspace/**", "/api/repositories/**").authenticated()
                         .requestMatchers("/api/diagram/**", "/api/diagrams/**").permitAll()
                         .requestMatchers("/api/evaluation/**", "/api/analytics/**").permitAll()
                         .anyRequest().permitAll());

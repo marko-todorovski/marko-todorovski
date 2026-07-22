@@ -54,7 +54,8 @@ class Stage9FrontendStructureTest {
                 .contains("/js/collaboration.jsx?v=12")
                 .contains("/js/editor.jsx?v=9")
                 .contains("/js/generator.jsx?v=9")
-                .contains("/js/app.jsx?v=9")
+                .contains("/js/repositories.jsx?v=1")
+                .contains("/js/app.jsx?v=13")
                 .doesNotContain("function App")
                 .doesNotContain("const AuthApi")
                 .doesNotContain("<style>");
@@ -68,9 +69,10 @@ class Stage9FrontendStructureTest {
                 "/js/ai-assistant.jsx?v=10",
                 "/js/sharing.jsx?v=11",
                 "/js/collaboration.jsx?v=12",
+                "/js/repositories.jsx?v=1",
                 "/js/editor.jsx?v=9",
                 "/js/generator.jsx?v=9",
-                "/js/app.jsx?v=9"
+                "/js/app.jsx?v=13"
         ));
     }
 
@@ -89,13 +91,13 @@ class Stage9FrontendStructureTest {
                     .andExpect(status().isOk());
         }
 
-        assertThat(referenceCount).isEqualTo(16);
+        assertThat(referenceCount).isEqualTo(17);
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
                 .andExpect(result -> assertThat(result.getResponse().getForwardedUrl()).isEqualTo("index.html"));
         mockMvc.perform(get("/index.html"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("/js/app.jsx?v=9")));
+                .andExpect(content().string(containsString("/js/app.jsx?v=13")));
         mockMvc.perform(get("/js/missing.jsx"))
                 .andExpect(status().isNotFound());
     }
@@ -108,6 +110,7 @@ class Stage9FrontendStructureTest {
         String aiAssistant = read("js/ai-assistant.jsx");
         String sharing = read("js/sharing.jsx");
         String collaboration = read("js/collaboration.jsx");
+        String repositories = read("js/repositories.jsx");
         String editor = read("js/editor.jsx");
         String generator = read("js/generator.jsx");
         String app = read("js/app.jsx");
@@ -140,6 +143,9 @@ class Stage9FrontendStructureTest {
                 .contains("ProjectCollaborationPanel")
                 .contains("InvitationLandingView")
                 .contains("namespace.modules.collaboration");
+        assertThat(repositories)
+                .contains("RepositoriesView")
+                .contains("namespace.modules.repositories");
         assertThat(editor)
                 .contains("DiagramEditorView")
                 .contains("beforeunload")

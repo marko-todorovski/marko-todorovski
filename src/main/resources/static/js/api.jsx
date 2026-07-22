@@ -130,6 +130,19 @@
         getInvitationMetadata: token => apiFetch(`/api/invitations/${encodeURIComponent(token)}`),
         acceptInvitation: token => apiFetch(`/api/invitations/${encodeURIComponent(token)}/accept`, { method: 'POST' }),
         rejectInvitation: token => apiFetch(`/api/invitations/${encodeURIComponent(token)}/reject`, { method: 'POST' }),
+        listRepositories: () => apiFetch('/api/repositories'),
+        getRepository: id => apiFetch(`/api/repositories/${id}`),
+        importRepositoryFromGithub: githubUrl => apiFetch('/api/repositories/github', { method: 'POST', body: { githubUrl } }),
+        importRepositoryFromZip: (file, name) => {
+            const form = new FormData();
+            form.append('file', file);
+            if (name) form.append('name', name);
+            return apiFetch('/api/repositories/zip', { method: 'POST', body: form });
+        },
+        deleteRepository: id => apiFetch(`/api/repositories/${id}`, { method: 'DELETE' }),
+        listRepositoryScans: id => apiFetch(`/api/repositories/${id}/scans`),
+        getLatestRepositoryScan: id => apiFetch(`/api/repositories/${id}/scans/latest`),
+        refreshRepositoryScan: id => apiFetch(`/api/repositories/${id}/scans`, { method: 'POST' }),
     };
 })();
 

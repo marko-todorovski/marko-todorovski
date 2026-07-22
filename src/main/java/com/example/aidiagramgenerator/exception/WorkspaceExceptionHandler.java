@@ -6,6 +6,8 @@ import com.example.aidiagramgenerator.controller.DiagramShareController;
 import com.example.aidiagramgenerator.controller.ProjectCollaborationController;
 import com.example.aidiagramgenerator.controller.ProjectController;
 import com.example.aidiagramgenerator.controller.ProjectInvitationController;
+import com.example.aidiagramgenerator.controller.RepositoryController;
+import com.example.aidiagramgenerator.controller.RepositoryScanController;
 import com.example.aidiagramgenerator.controller.SavedDiagramController;
 import com.example.aidiagramgenerator.dto.response.WorkspaceErrorResponse;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @RestControllerAdvice(assignableTypes = {
         ProjectController.class,
@@ -27,7 +30,9 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
         DiagramAiAssistantController.class,
         DiagramShareController.class,
         ProjectCollaborationController.class,
-        ProjectInvitationController.class
+        ProjectInvitationController.class,
+        RepositoryController.class,
+        RepositoryScanController.class
 })
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class WorkspaceExceptionHandler {
@@ -90,6 +95,21 @@ public class WorkspaceExceptionHandler {
     @ExceptionHandler(ProjectPermissionException.class)
     public ResponseEntity<WorkspaceErrorResponse> handleProjectPermission(ProjectPermissionException ex) {
         return error(HttpStatus.FORBIDDEN, "PROJECT_PERMISSION_DENIED", ex.getMessage());
+    }
+
+    @ExceptionHandler(RepositoryNotFoundException.class)
+    public ResponseEntity<WorkspaceErrorResponse> handleRepositoryNotFound(RepositoryNotFoundException ex) {
+        return error(HttpStatus.NOT_FOUND, "REPOSITORY_NOT_FOUND", "Repository not found");
+    }
+
+    @ExceptionHandler(RepositoryValidationException.class)
+    public ResponseEntity<WorkspaceErrorResponse> handleRepositoryValidation(RepositoryValidationException ex) {
+        return error(HttpStatus.BAD_REQUEST, "INVALID_REPOSITORY", ex.getMessage());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<WorkspaceErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
+        return error(HttpStatus.BAD_REQUEST, "REPOSITORY_ARCHIVE_TOO_LARGE", "Uploaded archive exceeds the maximum allowed size");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

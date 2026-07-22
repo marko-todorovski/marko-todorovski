@@ -101,6 +101,13 @@
 			<version>3.0.3</version>
 		</dependency>
 
+		<!-- Apache Commons Compress for safe ZIP archive scanning (Stage 13 repository analysis) -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-compress</artifactId>
+			<version>1.26.2</version>
+		</dependency>
+
 		<!-- Stanford CoreNLP for natural language processing -->
 		<dependency>
 			<groupId>edu.stanford.nlp</groupId>

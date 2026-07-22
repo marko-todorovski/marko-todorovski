@@ -23,7 +23,7 @@ class Stage11SharingFrontendTest {
         assertThat(index)
                 .contains("/js/sharing.jsx?v=11")
                 .contains("/js/ai-assistant.jsx?v=10")
-                .contains("/js/app.jsx?v=9");
+                .contains("/js/app.jsx?v=13");
         assertThat(index.indexOf("/js/sharing.jsx?v=11"))
                 .isLessThan(index.indexOf("/js/editor.jsx?v=9"));
 

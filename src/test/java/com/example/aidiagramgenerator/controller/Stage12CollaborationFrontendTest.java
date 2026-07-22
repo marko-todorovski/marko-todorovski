@@ -26,7 +26,7 @@ class Stage12CollaborationFrontendTest {
         assertThat(index)
                 .contains("/js/collaboration.jsx?v=12")
                 .contains("/js/sharing.jsx?v=11")
-                .contains("/js/app.jsx?v=9");
+                .contains("/js/app.jsx?v=13");
         assertThat(index.indexOf("/js/collaboration.jsx?v=12"))
                 .isGreaterThan(index.indexOf("/js/sharing.jsx?v=11"))
                 .isLessThan(index.indexOf("/js/editor.jsx?v=9"));

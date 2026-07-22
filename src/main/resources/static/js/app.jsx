@@ -29,6 +29,7 @@
         const { GeneratorView } = requireModule('generator');
         const { PublicShareView } = requireModule('sharing');
         const { InvitationLandingView } = requireModule('collaboration');
+        const { RepositoriesView } = requireModule('repositories');
 
         function App() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -144,6 +145,8 @@
         content = <RegisterView onLogin={(user, message) => { setCurrentUser(user); setAuthStatus('authenticated'); notify('success', message); }} go={go} />;
     } else if (currentView.name === 'dashboard') {
         content = requireAuth(<DashboardView projects={projects} loadProjects={loadProjects} go={go} notify={notify} />);
+    } else if (currentView.name === 'repositories') {
+        content = requireAuth(<RepositoriesView notify={notify} />);
     } else if (currentView.name === 'project') {
         content = requireAuth(<ProjectDetailsView projectId={currentView.projectId} go={go} notify={notify} loadProjects={loadProjects} />);
     } else if (currentView.name === 'diagram') {
@@ -162,6 +165,7 @@
                         {currentUser ? (
                             <>
                                 <button className={`nav-button ${currentView.name === 'dashboard' ? 'active' : ''}`} onClick={() => go('dashboard')}>Dashboard</button>
+                                <button className={`nav-button ${currentView.name === 'repositories' ? 'active' : ''}`} onClick={() => go('repositories')}>Repositories</button>
                                 <span className="nav-user">{userLabel(currentUser)}</span>
                                 <button className="nav-button" onClick={logout}>Logout</button>
                             </>

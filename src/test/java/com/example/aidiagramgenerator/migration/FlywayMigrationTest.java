@@ -32,6 +32,8 @@ class FlywayMigrationTest {
             assertTableExists(connection, "diagram_shares");
             assertTableExists(connection, "project_members");
             assertTableExists(connection, "project_invitations");
+            assertTableExists(connection, "repositories");
+            assertTableExists(connection, "repository_scans");
 
             assertColumnExists(connection, "domain_diagrams", "project_id");
             assertColumnExists(connection, "domain_diagrams", "owner_id");
@@ -54,6 +56,16 @@ class FlywayMigrationTest {
             assertConstraintExists(connection, "project_members", "fk_project_members_user_id");
             assertConstraintExists(connection, "project_invitations", "uk_project_invitations_token_hash");
             assertConstraintExists(connection, "project_invitations", "fk_project_invitations_project_id");
+            assertConstraintExists(connection, "repositories", "fk_repositories_owner_id");
+            assertConstraintExists(connection, "repositories", "ck_repositories_source_type");
+            assertConstraintExists(connection, "repositories", "ck_repositories_status");
+            assertConstraintExists(connection, "repository_scans", "fk_repository_scans_repository_id");
+            assertConstraintExists(connection, "repository_scans", "ck_repository_scans_status");
+
+            assertColumnExists(connection, "repositories", "owner_id");
+            assertColumnExists(connection, "repositories", "source_type");
+            assertColumnExists(connection, "repository_scans", "primary_language");
+            assertColumnExists(connection, "repository_scans", "top_level_folders");
         }
     }
 
