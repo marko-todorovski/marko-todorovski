@@ -22,6 +22,10 @@ Read from `src/main/resources/application.properties`:
 | `SESSION_TIMEOUT` | Session expiry (default `30m`) | No |
 | `SESSION_COOKIE_SECURE` | Must be `true` in production (default) — requires HTTPS | No, but verify host serves HTTPS |
 
+**Multipart upload note:** the app allows `spring.servlet.multipart.max-file-size=250MB` and `max-request-size=250MB`. The deployment target (Render/Railway/Nginx/etc.) must also allow request bodies of at least 250MB or large ZIP/repository uploads will fail before reaching Spring Boot.
+
+**`DATABASE_URL` clarification:** many managed PostgreSQL providers expose a URI like `postgres://user:password@host:5432/database`. Spring Boot expects a JDBC URL: `jdbc:postgresql://host:5432/database`. Convert the provider URL or configure `spring.datasource.url` accordingly before deployment.
+
 ## 3. AI provider decision
 
 Mock AI is already disabled (`app.ai.assistant.mock-enabled=false`). Pick one before going live:
