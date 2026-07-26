@@ -25,7 +25,7 @@ class NaturalLanguageParserTest {
     @BeforeAll
     static void setUp() {
         parser = new NaturalLanguageParser();
-        parser.init(); // Initialize CoreNLP pipeline
+        // CoreNLP pipeline is now lazily initialized on first parse()/parseToNlpResult() call.
     }
 
     @Nested

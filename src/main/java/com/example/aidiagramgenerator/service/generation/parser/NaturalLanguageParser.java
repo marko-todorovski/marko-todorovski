@@ -13,7 +13,6 @@ import edu.stanford.nlp.pipeline.CoreSentence;
 import edu.stanford.nlp.pipeline.StanfordCoreNLP;
 import edu.stanford.nlp.semgraph.SemanticGraph;
 import edu.stanford.nlp.semgraph.SemanticGraphEdge;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -115,21 +114,31 @@ public class NaturalLanguageParser implements InputParser {
      */
     private static final Pattern SVO_PATTERN = buildSvoPattern();
 
-    @PostConstruct
-    public void init() {
-        logger.info("Initializing Stanford CoreNLP pipeline...");
-        long start = System.currentTimeMillis();
-        
-        Properties props = new Properties();
-        // Use tokenize, ssplit (sentence split), pos (part-of-speech), lemma, ner, depparse
-        props.setProperty("annotators", "tokenize,ssplit,pos,lemma,ner,depparse");
-        // Optimize for speed
-        props.setProperty("ner.applyFineGrained", "false");
-        props.setProperty("ner.useSUTime", "false");
-        
-        this.pipeline = new StanfordCoreNLP(props);
-        
-        logger.info("CoreNLP pipeline initialized in {}ms", System.currentTimeMillis() - start);
+    /**
+     * Lazily initializes the CoreNLP pipeline on first use rather than eagerly at
+     * application startup ({@code @PostConstruct}). The pipeline (tokenize, ssplit,
+     * pos, lemma, ner, depparse) requires roughly 1-1.5GB of heap once fully loaded;
+     * deferring construction until the first natural-language parse request lets the
+     * application boot and serve non-NLP endpoints on memory-constrained hosts (e.g.
+     * a 512MB instance), instead of failing at startup before any request is served.
+     */
+    private synchronized StanfordCoreNLP pipeline() {
+        if (this.pipeline == null) {
+            logger.info("Initializing Stanford CoreNLP pipeline (lazy, first use)...");
+            long start = System.currentTimeMillis();
+
+            Properties props = new Properties();
+            // Use tokenize, ssplit (sentence split), pos (part-of-speech), lemma, ner, depparse
+            props.setProperty("annotators", "tokenize,ssplit,pos,lemma,ner,depparse");
+            // Optimize for speed
+            props.setProperty("ner.applyFineGrained", "false");
+            props.setProperty("ner.useSUTime", "false");
+
+            this.pipeline = new StanfordCoreNLP(props);
+
+            logger.info("CoreNLP pipeline initialized in {}ms", System.currentTimeMillis() - start);
+        }
+        return this.pipeline;
     }
 
     @Override
@@ -151,7 +160,7 @@ public class NaturalLanguageParser implements InputParser {
 
         // Process with CoreNLP
         CoreDocument document = new CoreDocument(rawContent);
-        pipeline.annotate(document);
+        pipeline().annotate(document);
 
         // Extract from each sentence
         for (CoreSentence sentence : document.sentences()) {
@@ -196,7 +205,7 @@ public class NaturalLanguageParser implements InputParser {
 
         // Process with CoreNLP
         CoreDocument document = new CoreDocument(rawContent);
-        pipeline.annotate(document);
+        pipeline().annotate(document);
 
         for (CoreSentence sentence : document.sentences()) {
             extractEntitiesFromSentence(sentence, result);
