@@ -103,7 +103,77 @@ No `spring-boot.run.profiles=dev` flag in production — this uses `application.
 - [ ] Repository analysis limits reviewed (`max-archive-bytes=250MB`, `max-files=50000`) — appropriate for expected usage/host resources
 - [x] Smoke test after deploy: register → create project → generate diagram → AI-assisted edit → share → invite member → repository analysis — share and repository-import steps re-verified working after resolving the transient H2 state issue (see section 0)
 
-## 6. Post-launch
+## 7. Render deployment checklist (prepared only — deployment NOT started)
+
+Chosen host: **Render**. This section is preparation/documentation only; no Render resources have been created and no deploy has been triggered.
+
+### 7.1 Render web service configuration
+
+- [ ] Create a new **Web Service** on Render, connected to this repo/branch (`release/v3.0.0`, tag `v3.0.3`)
+- [ ] Runtime: **Docker** (use the repo's existing `Dockerfile` — multi-stage `eclipse-temurin:21-jdk-alpine` build → `21-jre-alpine` runtime, already non-root); do not use Render's native Java buildpack, since the Dockerfile is already correct and tested
+- [ ] Region: pick nearest to expected users (affects latency to the separate Render Postgres instance too — keep both in the same region)
+- [ ] Health check path: none configured today (`Dockerfile` has no `HEALTHCHECK`); Render's own HTTP health check can point at `/` or a real health endpoint if one exists — confirm before relying on it for zero-downtime deploys
+- [ ] Instance type/plan: see §7.9 (memory) before picking — CoreNLP's pipeline load is the binding constraint, not CPU
+
+### 7.2 PostgreSQL setup
+
+- [ ] Create a Render **PostgreSQL** managed instance (separate resource from the web service)
+- [ ] Note Render's internal connection string is `postgres://user:pass@host/db` — must be converted to JDBC form `jdbc:postgresql://host:5432/db` per the existing `DATABASE_URL` clarification in §2 above; do not paste Render's URL directly into `DATABASE_URL`
+- [ ] Use Render's **internal** database URL (private network) for the web service, not the external one, to avoid extra latency/egress and to keep the DB off the public internet
+- [ ] Confirm Postgres version — repo's local reference (`docker-compose.yml`, and the native Postgres this session verified migrations against) is v16; Render offers specific major versions, pick 16 or newer for parity
+
+### 7.3 Environment variables (Render dashboard → Environment)
+
+| Variable | Value | Notes |
+|---|---|---|
+| `DATABASE_URL` | `jdbc:postgresql://<render-internal-host>/<db>` | converted from Render's native URI, see §7.2 |
+| `DATABASE_USERNAME` | from Render Postgres credentials | |
+| `DATABASE_PASSWORD` | from Render Postgres credentials | mark as a Render "secret" env var, not plain |
+| `OPENAI_API_KEY` | real key, or omit for Ollama/degraded fallback | see §3 and §7.8 |
+| `SESSION_COOKIE_SECURE` | leave **unset** (defaults to `true`) | do NOT copy `docker-compose.yml`'s `"false"` dev value in here — see §0 |
+| `SESSION_TIMEOUT` | optional, default `30m` | |
+| `JAVA_TOOL_OPTIONS` / `JAVA_OPTS` | e.g. `-Xmx<N>m` | required to bound heap explicitly on Render's fixed-memory instances — see §7.9 |
+| `SPRING_PROFILES_ACTIVE` | leave **unset** | must NOT be `dev` in production — see §7.5 |
+
+### 7.4 Dockerfile verification
+
+- [x] Reviewed this session (see §0's Dockerfile review): multi-stage build, non-root `app` user, exposes 8080 — no changes needed for Render, which auto-detects `EXPOSE 8080`
+- [ ] Confirm Render's build machine has enough memory/time to run `./mvnw -B clean package` inside the build stage (Maven + CoreNLP dependency resolution/download can be slow on first build — Render's build timeout applies)
+- [ ] No `HEALTHCHECK` instruction exists — decide whether to add one or rely solely on Render's platform-level health check
+
+### 7.5 Spring production profile
+
+- [ ] Confirm `SPRING_PROFILES_ACTIVE` is unset on the Render service (uses default `application.properties` → Postgres, `mock-enabled=false`, Swagger disabled, `ddl-auto=validate`) — do not set it to `dev`
+- [ ] No code changes required here; this is purely a Render dashboard configuration check
+
+### 7.6 Flyway migrations
+
+- [ ] On first boot, Flyway will run `common/` + `postgresql/` migrations (V1–V8) automatically against the fresh Render Postgres instance (`spring.flyway.enabled=true`, `baseline-on-migrate=true`, `baseline-version=0`) — this matches exactly what was verified against real PostgreSQL 16 this session (see §0), so no additional migration risk is expected
+- [ ] Watch the first-boot Render logs for Flyway output to confirm all 8 migrations apply cleanly before considering the deploy successful
+
+### 7.7 HTTPS / session cookie verification
+
+- [ ] Render terminates TLS at its edge and serves all web services over HTTPS by default — `server.servlet.session.cookie.secure=true` (the production default) will work out of the box; no extra config needed
+- [ ] After first deploy, verify in browser dev tools that the session cookie has the `Secure` flag set and login/session persistence works over the `https://*.onrender.com` URL
+
+### 7.8 OpenAI optional fallback
+
+- [ ] Decide before going live: set a real `OPENAI_API_KEY`, or accept that `DiagramGenerationService` silently falls back to the rule-based generator when the key is missing/invalid (see §0's OpenAI fallback behavior) — this is a product decision, not a technical blocker either way
+- [ ] If accepting the fallback, consider whether to monitor/alert on fallback rate (not currently instrumented)
+
+### 7.9 Memory considerations — Spring Boot + Stanford CoreNLP
+
+**This is the most significant risk for a Render deploy and needs a plan before picking an instance size.**
+
+- `NaturalLanguageParser` (`src/main/java/.../service/generation/parser/NaturalLanguageParser.java`) eagerly loads a Stanford CoreNLP pipeline in `@PostConstruct` with annotators `tokenize,ssplit,pos,lemma,ner,depparse` — this loads the POS tagger, NER models, and a full dependency parser into memory **at application startup**, before the app can serve any request.
+- The `stanford-corenlp:4.5.7:models` classifier dependency in `pom.xml` bundles large pretrained models; combined with the loaded pipeline objects, this pipeline alone typically needs on the order of **1–1.5+ GB of heap** in addition to the JVM's own baseline and Spring Boot's footprint. This is a well-known characteristic of CoreNLP with `ner`+`depparse` enabled, not specific to this app.
+- Render's smallest paid web service plans (e.g. Starter, 512MB) are very unlikely to be sufficient — startup will likely OOM-kill the container during `@PostConstruct` before the app finishes booting. This should be verified empirically (deploy attempt with logs watched) rather than assumed, but budget for at least a **Standard-tier plan (2GB RAM) or higher** as the starting point.
+- Mitigations to consider (all deferred — no code changes made, per "do not change business logic"):
+  - Set an explicit `-Xmx` via `JAVA_TOOL_OPTIONS` sized to leave headroom below Render's hard memory limit (JVM getting OOM-killed by the OS is worse than a controlled `OutOfMemoryError` with a heap dump).
+  - If cost is a concern, evaluate whether `depparse` (the heaviest annotator) is actually required for the app's classification/generation quality, or whether it could be made lazy/optional — this would be a code change and is out of scope for this deployment-prep pass.
+  - Confirm Render's build stage (separate machine/limits from the runtime instance) also has enough memory to compile and package the CoreNLP-dependent JAR.
+
+## 8. Post-launch
 
 - [ ] Confirm live URL is reachable and add it to `README.md`
 - [ ] Add live URL to CV / LinkedIn project entry
