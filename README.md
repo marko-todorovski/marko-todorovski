@@ -2,7 +2,7 @@
 
 [![Java](https://img.shields.io/badge/Java-21%2B-orange)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.2-brightgreen)](https://spring.io/projects/spring-boot)
-[![Version](https://img.shields.io/badge/version-3.0.0-blue)](https://github.com/marko-todorovski/marko-todorovski/releases/tag/v3.0.0)
+[![Version](https://img.shields.io/badge/version-3.0.2-blue)](https://github.com/marko-todorovski/marko-todorovski/releases/tag/v3.0.2)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 > **Capstone / Diploma Project**: Automatic Generation of Software Engineering Diagrams from Natural Language, XML, and Repository Analysis
@@ -114,6 +114,7 @@ src/main/resources/
 
 | | |
 |---|---|
+| **Landing Page** | ![Landing](docs/images/landing.png) |
 | **Dashboard** | ![Dashboard](docs/images/dashboard.png) |
 | **Diagram Editor** | ![Editor](docs/images/editor.png) |
 | **AI Assistant** | ![AI Assistant](docs/images/ai-assistant.png) |
@@ -123,9 +124,9 @@ src/main/resources/
 
 ## Demo
 
-![Demo](docs/images/demo.gif)
+[📹 Watch the full demo video](docs/video/demo.mp4)
 
-Full walkthrough: register → create project → generate diagram → edit → AI-assist → save version → share publicly → invite member → analyze repository.
+Full walkthrough: landing → generate diagram → save to project → open editor → version history → AI-assisted edit → share link → collaboration → repository analysis.
 
 ## Project Timeline
 
@@ -134,6 +135,7 @@ Full walkthrough: register → create project → generate diagram → edit → 
 | v1.0.0 | Diagram persistence, generation from text/XML/URL |
 | v2.0.0 | Session authentication and security foundation |
 | v3.0.0 | Frontend dashboard, editor, version history, AI-assisted editing, public sharing, team workspaces, repository analysis |
+| v3.0.2 | Release-prep: demo screenshots/video, production deployment checklist, CHECK-constraint bugs verified fixed against real PostgreSQL |
 
 See `git log --oneline --decorate` for the full commit history.
 
