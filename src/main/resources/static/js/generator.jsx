@@ -3,7 +3,7 @@
     namespace.modules = namespace.modules || {};
     const { useState, useEffect, useRef } = React;
     const AuthApi = namespace.modules.api;
-    const { SaveDiagramDialog } = namespace.modules.projects;
+    const { SaveDiagramDialog, mapTypeToEnum } = namespace.modules.projects;
 
     function MermaidDiagram({ code }) {
     const containerRef = useRef(null);

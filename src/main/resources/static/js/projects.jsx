@@ -427,6 +427,7 @@ function mapTypeToEnum(displayType) {
     namespace.modules.projects = {
         DashboardView,
         ProjectDetailsView,
-        SaveDiagramDialog
+        SaveDiagramDialog,
+        mapTypeToEnum
     };
 })();
