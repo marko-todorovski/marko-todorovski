@@ -1,5 +1,12 @@
 name: Build
 
+# Jobs:
+#   test               - compiles and runs the full test suite (push + PR)
+#   dependency-review  - scans dependency changes in a PR for known
+#                         vulnerabilities via the GitHub Advisory Database
+#                         (PR only; does not run on push, does not affect
+#                         the test job)
+
 on:
   push:
     branches: ["**"]
@@ -21,3 +28,16 @@ jobs:
 
       - name: Run tests
         run: ./mvnw -B test
+
+  # Scans dependency changes introduced by a PR against known vulnerability
+  # advisories (GitHub Advisory Database). Fails only on pull requests that
+  # introduce new vulnerable dependencies; does not affect push builds or
+  # the test job above.
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
