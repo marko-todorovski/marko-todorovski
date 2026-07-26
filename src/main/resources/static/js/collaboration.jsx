@@ -171,7 +171,7 @@
             }
         }
 
-        const absoluteUrl = created ? `${window.location.origin}${window.location.pathname}${created.invitationUrl}` : '';
+        const absoluteUrl = created ? `${window.location.origin}${created.invitationUrl}` : '';
 
         return (
             <Modal title="Invite member" onClose={onClose}>

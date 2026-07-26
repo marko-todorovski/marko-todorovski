@@ -280,6 +280,7 @@ function ProjectDetailsView({ projectId, go, notify, loadProjects }) {
     const [newProjectDescription, setNewProjectDescription] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const editableProjects = (projects || []).filter(project => canEdit(project.currentUserRole));
 
     useEffect(() => {
         loadProjects(false).then(list => {
