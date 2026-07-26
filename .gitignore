@@ -33,3 +33,5 @@ build/
 .vscode/
 
 .fake
+.gstack/
+.claude/

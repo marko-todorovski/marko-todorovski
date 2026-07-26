@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ai_diagrams
+      POSTGRES_USER: ai_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devpass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_user -d ai_diagrams"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/ai_diagrams
+      DATABASE_USERNAME: ai_user
+      DATABASE_PASSWORD: ${DB_PASSWORD:-devpass}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SESSION_COOKIE_SECURE: "false"
+
+volumes:
+  pgdata:
