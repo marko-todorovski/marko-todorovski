@@ -6,6 +6,7 @@ import com.example.aidiagramgenerator.dto.response.AuthenticatedUserResponse;
 import com.example.aidiagramgenerator.exception.InvalidAuthRequestException;
 import com.example.aidiagramgenerator.security.ApplicationUserPrincipal;
 import com.example.aidiagramgenerator.service.AuthService;
+import com.example.aidiagramgenerator.service.LoginRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -37,16 +38,19 @@ public class AuthController {
     private final AuthService authService;
     private final AuthenticationManager authenticationManager;
     private final SecurityContextRepository securityContextRepository;
+    private final LoginRateLimiter loginRateLimiter;
     private final SessionAuthenticationStrategy sessionAuthenticationStrategy = new ChangeSessionIdAuthenticationStrategy();
     private final SecurityContextLogoutHandler logoutHandler = new SecurityContextLogoutHandler();
 
     public AuthController(
             AuthService authService,
             AuthenticationManager authenticationManager,
-            SecurityContextRepository securityContextRepository) {
+            SecurityContextRepository securityContextRepository,
+            LoginRateLimiter loginRateLimiter) {
         this.authService = authService;
         this.authenticationManager = authenticationManager;
         this.securityContextRepository = securityContextRepository;
+        this.loginRateLimiter = loginRateLimiter;
     }
 
     @PostMapping("/register")
@@ -66,8 +70,17 @@ public class AuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         validateLoginRequest(request);
-        Authentication authentication = authenticate(request.getEmail(), request.getPassword(), httpRequest, httpResponse);
-        return ResponseEntity.ok(authService.getCurrentUser((ApplicationUserPrincipal) authentication.getPrincipal()));
+        String remoteAddress = httpRequest.getRemoteAddr();
+        String email = request.getEmail();
+        loginRateLimiter.checkAllowed(remoteAddress, email);
+        try {
+            Authentication authentication = authenticate(email, request.getPassword(), httpRequest, httpResponse);
+            loginRateLimiter.recordSuccess(remoteAddress, email);
+            return ResponseEntity.ok(authService.getCurrentUser((ApplicationUserPrincipal) authentication.getPrincipal()));
+        } catch (BadCredentialsException ex) {
+            loginRateLimiter.recordFailure(remoteAddress, email);
+            throw ex;
+        }
     }
 
     @PostMapping("/logout")

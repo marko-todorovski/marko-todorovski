@@ -158,6 +158,59 @@ class AuthControllerSecurityTest {
     }
 
     @Test
+    void repeatedFailedLoginsAreRateLimitedWithoutRevealingAccountExistence() throws Exception {
+        saveUser("throttled@example.com", "correct-password");
+
+        for (int i = 0; i < 5; i++) {
+            login("throttled@example.com", "wrong-password")
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+        }
+
+        login("throttled@example.com", "wrong-password")
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("TOO_MANY_LOGIN_ATTEMPTS"));
+
+        // Even the correct password is now throttled - the response gives no hint that the
+        // account exists or that the password would otherwise have been accepted.
+        login("throttled@example.com", "correct-password")
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("TOO_MANY_LOGIN_ATTEMPTS"));
+
+        // An unknown account behind the same IP is throttled identically after five attempts -
+        // the rate-limit response is indistinguishable from the known-account case above.
+        for (int i = 0; i < 5; i++) {
+            login("never-registered@example.com", "wrong-password")
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+        }
+        login("never-registered@example.com", "wrong-password")
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("TOO_MANY_LOGIN_ATTEMPTS"));
+    }
+
+    @Test
+    void successfulLoginResetsFailedAttemptCounter() throws Exception {
+        saveUser("resets@example.com", "correct-password");
+
+        for (int i = 0; i < 4; i++) {
+            login("resets@example.com", "wrong-password")
+                    .andExpect(status().isUnauthorized());
+        }
+
+        login("resets@example.com", "correct-password")
+                .andExpect(status().isOk());
+
+        // Counter was cleared by the successful login, so four more failures are still allowed
+        // rather than being immediately throttled.
+        for (int i = 0; i < 4; i++) {
+            login("resets@example.com", "wrong-password")
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+        }
+    }
+
+    @Test
     void logoutInvalidatesSessionAndUnauthenticatedLogoutRequiresAuthentication() throws Exception {
         saveUser("logout@example.com", "correct-password");
         MockHttpSession session = loginSession("logout@example.com", "correct-password");

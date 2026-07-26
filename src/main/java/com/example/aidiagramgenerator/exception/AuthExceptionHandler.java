@@ -35,4 +35,10 @@ public class AuthExceptionHandler {
         return ResponseEntity.badRequest()
                 .body(new AuthErrorResponse("INVALID_AUTH_REQUEST", "Invalid authentication request"));
     }
+
+    @ExceptionHandler(AuthRateLimitedException.class)
+    public ResponseEntity<AuthErrorResponse> handleAuthRateLimited(AuthRateLimitedException ex) {
+        return ResponseEntity.status(ex.getStatus())
+                .body(new AuthErrorResponse(ex.getCode(), ex.getMessage()));
+    }
 }
