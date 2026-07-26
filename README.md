@@ -2,10 +2,12 @@
 
 [![Java](https://img.shields.io/badge/Java-21%2B-orange)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.2-brightgreen)](https://spring.io/projects/spring-boot)
-[![Version](https://img.shields.io/badge/version-3.0.2-blue)](https://github.com/marko-todorovski/marko-todorovski/releases/tag/v3.0.2)
+[![Version](https://img.shields.io/badge/version-3.0.3-blue)](https://github.com/marko-todorovski/marko-todorovski/releases/tag/v3.0.3)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 > **Capstone / Diploma Project**: Automatic Generation of Software Engineering Diagrams from Natural Language, XML, and Repository Analysis
+
+**🚀 Live demo:** [https://ai-diagrams-app.onrender.com/](https://ai-diagrams-app.onrender.com/) — hosted on Render's free tier, so the app spins down after inactivity; the first request after idle can take 30–50s to wake up. Note: AI Assistant (Explain/Suggest/Modify) features require an OpenAI API key, which is not configured on this deployment, so those features currently fall back to "unavailable"; diagram generation itself works fully via the rule-based/NLP engine.
 
 A full-stack Spring Boot application that generates, edits, versions, shares, and collaborates on software engineering diagrams (Mermaid / PlantUML / Draw.io formats). Includes session-based authentication, a project dashboard, an in-browser diagram editor, AI-assisted editing, public sharing, team workspaces, and automated repository analysis.
 
@@ -136,6 +138,7 @@ Full walkthrough: landing → generate diagram → save to project → open edit
 | v2.0.0 | Session authentication and security foundation |
 | v3.0.0 | Frontend dashboard, editor, version history, AI-assisted editing, public sharing, team workspaces, repository analysis |
 | v3.0.2 | Release-prep: demo screenshots/video, production deployment checklist, CHECK-constraint bugs verified fixed against real PostgreSQL |
+| v3.0.3 | Live production deployment on Render (PostgreSQL + Docker), Graphviz/PlantUML rendering fix, full smoke-test pass of auth/projects/editor/versioning/sharing/collaboration/repository-analysis |
 
 See `git log --oneline --decorate` for the full commit history.
 
