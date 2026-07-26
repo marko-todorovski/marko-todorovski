@@ -535,10 +535,6 @@ const DEMO_EXAMPLES = [
                     }}
                 />
             )}
-            <div className="links">
-                <a href="/swagger-ui.html">Swagger UI</a>
-                <a href="/api-docs">OpenAPI Spec</a>
-            </div>
         </div>
     );
 }
